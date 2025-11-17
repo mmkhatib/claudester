@@ -44,6 +44,7 @@ var AgentType;
 var AgentStatus;
 (function (AgentStatus) {
     AgentStatus["IDLE"] = "IDLE";
+    AgentStatus["ACTIVE"] = "ACTIVE";
     AgentStatus["RUNNING"] = "RUNNING";
     AgentStatus["COMPLETED"] = "COMPLETED";
     AgentStatus["FAILED"] = "FAILED";

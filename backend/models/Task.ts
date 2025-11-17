@@ -2,27 +2,36 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export enum TaskStatus {
   PENDING = 'PENDING',
+  ASSIGNED = 'ASSIGNED',
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',
-  BLOCKED = 'BLOCKED'
+  BLOCKED = 'BLOCKED',
+  CANCELLED = 'CANCELLED'
 }
 
 export enum TaskType {
   DEVELOPMENT = 'DEVELOPMENT',
   TEST = 'TEST',
-  TDD = 'TDD'
+  TDD = 'TDD',
+  TESTING = 'TESTING',
+  REVIEW = 'REVIEW',
+  DOCUMENTATION = 'DOCUMENTATION',
+  DEPLOYMENT = 'DEPLOYMENT'
 }
 
 export interface ITask extends Document {
   taskId: string;
   specId: mongoose.Types.ObjectId;
+  projectId?: mongoose.Types.ObjectId;
+  title: string;
   name: string;
   description: string;
   type: TaskType;
   status: TaskStatus;
   priority: number;
   order: number;
+  progress: number;
 
   dependencies: mongoose.Types.ObjectId[];
 
@@ -34,12 +43,17 @@ export interface ITask extends Document {
   actualHours?: number;
   testCoverage?: number;
 
+  assignedTo?: mongoose.Types.ObjectId;
+  agentId?: mongoose.Types.ObjectId;
   assignedAgentId?: mongoose.Types.ObjectId;
   output?: string;
+  result?: any;
   error?: string;
 
+  createdBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  startedAt?: Date;
   completedAt?: Date;
 }
 
@@ -55,6 +69,15 @@ const TaskSchema = new Schema<ITask>({
     ref: 'Spec',
     required: true,
     index: true
+  },
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project',
+    index: true
+  },
+  title: {
+    type: String,
+    required: true
   },
   name: {
     type: String,
@@ -84,6 +107,12 @@ const TaskSchema = new Schema<ITask>({
     type: Number,
     required: true
   },
+  progress: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
 
   dependencies: [{
     type: Schema.Types.ObjectId,
@@ -98,13 +127,27 @@ const TaskSchema = new Schema<ITask>({
   actualHours: Number,
   testCoverage: Number,
 
+  assignedTo: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  agentId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Agent'
+  },
   assignedAgentId: {
     type: Schema.Types.ObjectId,
     ref: 'Agent'
   },
   output: String,
+  result: Schema.Types.Mixed,
   error: String,
 
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  startedAt: Date,
   completedAt: Date,
 }, {
   timestamps: true

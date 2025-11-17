@@ -38,16 +38,22 @@ const mongoose_1 = __importStar(require("mongoose"));
 var TaskStatus;
 (function (TaskStatus) {
     TaskStatus["PENDING"] = "PENDING";
+    TaskStatus["ASSIGNED"] = "ASSIGNED";
     TaskStatus["IN_PROGRESS"] = "IN_PROGRESS";
     TaskStatus["COMPLETED"] = "COMPLETED";
     TaskStatus["FAILED"] = "FAILED";
     TaskStatus["BLOCKED"] = "BLOCKED";
+    TaskStatus["CANCELLED"] = "CANCELLED";
 })(TaskStatus || (exports.TaskStatus = TaskStatus = {}));
 var TaskType;
 (function (TaskType) {
     TaskType["DEVELOPMENT"] = "DEVELOPMENT";
     TaskType["TEST"] = "TEST";
     TaskType["TDD"] = "TDD";
+    TaskType["TESTING"] = "TESTING";
+    TaskType["REVIEW"] = "REVIEW";
+    TaskType["DOCUMENTATION"] = "DOCUMENTATION";
+    TaskType["DEPLOYMENT"] = "DEPLOYMENT";
 })(TaskType || (exports.TaskType = TaskType = {}));
 const TaskSchema = new mongoose_1.Schema({
     taskId: {
@@ -61,6 +67,15 @@ const TaskSchema = new mongoose_1.Schema({
         ref: 'Spec',
         required: true,
         index: true
+    },
+    projectId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Project',
+        index: true
+    },
+    title: {
+        type: String,
+        required: true
     },
     name: {
         type: String,
@@ -90,6 +105,12 @@ const TaskSchema = new mongoose_1.Schema({
         type: Number,
         required: true
     },
+    progress: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
+    },
     dependencies: [{
             type: mongoose_1.Schema.Types.ObjectId,
             ref: 'Task'
@@ -100,12 +121,26 @@ const TaskSchema = new mongoose_1.Schema({
     estimatedHours: Number,
     actualHours: Number,
     testCoverage: Number,
+    assignedTo: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    agentId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Agent'
+    },
     assignedAgentId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Agent'
     },
     output: String,
+    result: mongoose_1.Schema.Types.Mixed,
     error: String,
+    createdBy: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    startedAt: Date,
     completedAt: Date,
 }, {
     timestamps: true

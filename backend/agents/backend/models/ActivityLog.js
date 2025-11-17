@@ -41,6 +41,7 @@ var EventType;
     EventType["SPEC_UPDATED"] = "SPEC_UPDATED";
     EventType["SPEC_APPROVED"] = "SPEC_APPROVED";
     EventType["TASK_CREATED"] = "TASK_CREATED";
+    EventType["TASK_UPDATED"] = "TASK_UPDATED";
     EventType["TASK_STARTED"] = "TASK_STARTED";
     EventType["TASK_COMPLETED"] = "TASK_COMPLETED";
     EventType["TASK_FAILED"] = "TASK_FAILED";

@@ -27,8 +27,11 @@ export interface TaskUpdateMessage {
   type: 'TASK_UPDATE';
   taskId: string;
   specId: string;
-  status: string;
+  projectId?: string;
+  status?: string;
+  progress?: number;
   agentId?: string;
+  assignedTo?: string;
   timestamp: Date;
 }
 

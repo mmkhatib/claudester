@@ -21,6 +21,7 @@ export const PERMISSIONS = {
   TASK_CREATE: [UserRole.ADMIN, UserRole.PM],
   TASK_UPDATE: [UserRole.ADMIN, UserRole.PM, UserRole.DEVELOPER],
   TASK_ASSIGN: [UserRole.ADMIN, UserRole.PM],
+  TASK_EXECUTE: [UserRole.ADMIN, UserRole.PM, UserRole.DEVELOPER],
   TASK_DELETE: [UserRole.ADMIN, UserRole.PM],
   TASK_VIEW: [UserRole.ADMIN, UserRole.PM, UserRole.STAKEHOLDER, UserRole.DEVELOPER, UserRole.VIEWER],
 

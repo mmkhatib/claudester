@@ -8,6 +8,7 @@ export enum AgentType {
 
 export enum AgentStatus {
   IDLE = 'IDLE',
+  ACTIVE = 'ACTIVE',
   RUNNING = 'RUNNING',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',
