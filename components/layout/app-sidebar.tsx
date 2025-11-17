@@ -10,6 +10,7 @@ import {
   CheckSquare,
   Bot,
   Monitor,
+  FlaskConical,
   Activity,
   Settings,
   ChevronLeft,
@@ -47,6 +48,11 @@ const navigation = [
     name: 'Monitor',
     href: '/monitor',
     icon: Monitor,
+  },
+  {
+    name: 'Testing',
+    href: '/testing',
+    icon: FlaskConical,
   },
   {
     name: 'Activity',
