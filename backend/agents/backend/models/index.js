@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TestStatus = exports.TestResult = exports.EventType = exports.ActivityLog = exports.Comment = exports.AgentStatus = exports.AgentType = exports.Agent = exports.TaskType = exports.TaskStatus = exports.Task = exports.Phase = exports.SpecStatus = exports.Priority = exports.Spec = exports.Project = exports.UserRole = exports.User = void 0;
+exports.TestStatus = exports.TestResult = exports.EventType = exports.ActivityLog = exports.Comment = exports.AgentStatus = exports.AgentType = exports.Agent = exports.TaskType = exports.TaskStatus = exports.Task = exports.SpecVersion = exports.Phase = exports.SpecStatus = exports.Priority = exports.Spec = exports.Project = exports.UserRole = exports.User = void 0;
 var User_1 = require("./User");
 Object.defineProperty(exports, "User", { enumerable: true, get: function () { return __importDefault(User_1).default; } });
 Object.defineProperty(exports, "UserRole", { enumerable: true, get: function () { return User_1.UserRole; } });
@@ -14,6 +14,8 @@ Object.defineProperty(exports, "Spec", { enumerable: true, get: function () { re
 Object.defineProperty(exports, "Priority", { enumerable: true, get: function () { return Spec_1.Priority; } });
 Object.defineProperty(exports, "SpecStatus", { enumerable: true, get: function () { return Spec_1.SpecStatus; } });
 Object.defineProperty(exports, "Phase", { enumerable: true, get: function () { return Spec_1.Phase; } });
+var SpecVersion_1 = require("./SpecVersion");
+Object.defineProperty(exports, "SpecVersion", { enumerable: true, get: function () { return __importDefault(SpecVersion_1).default; } });
 var Task_1 = require("./Task");
 Object.defineProperty(exports, "Task", { enumerable: true, get: function () { return __importDefault(Task_1).default; } });
 Object.defineProperty(exports, "TaskStatus", { enumerable: true, get: function () { return Task_1.TaskStatus; } });
