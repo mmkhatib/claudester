@@ -9,6 +9,7 @@ import {
   FileText,
   CheckSquare,
   Bot,
+  Monitor,
   Activity,
   Settings,
   ChevronLeft,
@@ -41,6 +42,11 @@ const navigation = [
     name: 'Agents',
     href: '/agents',
     icon: Bot,
+  },
+  {
+    name: 'Monitor',
+    href: '/monitor',
+    icon: Monitor,
   },
   {
     name: 'Activity',
