@@ -345,7 +345,7 @@ This project follows a spec-driven development methodology. All changes should:
 
 ## Contact
 
-- **Project Owner**: Mohamed Khatib
+- **Project Owner**: Mostafa Elkhatib
 - **Repository**: https://github.com/mmkhatib/claudester
 
 ---
