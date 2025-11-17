@@ -28,17 +28,20 @@ export default function Home() {
           Transform business requirements into working software through autonomous, spec-driven development powered by Claude AI
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/demo">
+          <Link href="/onboarding">
             <Button variant="primary" size="lg">
               Get Started
             </Button>
           </Link>
-          <Link href="/dashboard">
+          <Link href="/demo">
             <Button variant="outline" size="lg">
-              View Dashboard
+              Try Demo
             </Button>
           </Link>
         </div>
+        <p className="text-sm text-zinc-500 mt-4">
+          Get Started with the setup wizard or Try Demo to explore without configuration
+        </p>
       </section>
 
       {/* Features */}
