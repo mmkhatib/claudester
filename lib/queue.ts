@@ -1,6 +1,7 @@
 import Bull, { Queue, Job, JobOptions } from 'bull';
 import { redis, redisPub, redisSub } from './redis';
 import { loggers } from './logger';
+import { AgentType, TaskType } from '@/backend/models';
 
 // Queue options
 const queueOptions = {
@@ -31,8 +32,8 @@ const queueOptions = {
 export interface AgentTaskData {
   taskId: string;
   specId: string;
-  agentType: 'DEVELOPMENT' | 'TEST' | 'TDD';
-  taskType: 'DEVELOPMENT' | 'TEST' | 'TDD';
+  agentType: AgentType;
+  taskType: TaskType;
   description: string;
   acceptanceCriteria: string[];
   dependencies: string[];

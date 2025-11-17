@@ -91,7 +91,9 @@ export function isTest(): boolean {
 }
 
 // Validate environment variables at module load
-if (typeof window === 'undefined') {
+const isServer = typeof process !== 'undefined' && process.versions && process.versions.node;
+
+if (isServer) {
   // Only validate on server-side
   try {
     validateEnv();
