@@ -1,0 +1,22 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "MONGODB_URI": "@mongodb-uri",
+    "ANTHROPIC_API_KEY": "@anthropic-api-key",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "@clerk-publishable-key",
+    "CLERK_SECRET_KEY": "@clerk-secret-key",
+    "REDIS_HOST": "@redis-host",
+    "REDIS_PORT": "@redis-port",
+    "NEXT_PUBLIC_WS_URL": "@ws-url"
+  },
+  "build": {
+    "env": {
+      "MONGODB_URI": "@mongodb-uri",
+      "ANTHROPIC_API_KEY": "@anthropic-api-key"
+    }
+  }
+}
