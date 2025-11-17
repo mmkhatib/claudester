@@ -1,17 +1,24 @@
-import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
+
+// Check if Clerk is configured
+const hasClerkKeys = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== 'your_clerk_publishable_key';
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
+  // Only check authentication if Clerk is configured
+  if (hasClerkKeys) {
+    const { auth } = await import('@clerk/nextjs/server');
+    const { userId } = await auth();
 
-  if (!userId) {
-    redirect('/sign-in');
+    if (!userId) {
+      redirect('/sign-in');
+    }
   }
 
   return (
