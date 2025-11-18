@@ -1,12 +1,31 @@
 'use client';
 
-import { UserButton } from '@clerk/nextjs';
-import { Bell, Search } from 'lucide-react';
+import { Bell, Search, User } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useEffect, useState } from 'react';
 
 export function AppHeader() {
+  const [hasClerkKeys, setHasClerkKeys] = useState(false);
+  const [UserButton, setUserButton] = useState<any>(null);
+
+  useEffect(() => {
+    // Check if Clerk is configured
+    const clerkConfigured =
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== 'your_clerk_publishable_key';
+
+    setHasClerkKeys(!!clerkConfigured);
+
+    // Dynamically import UserButton only if Clerk is configured
+    if (clerkConfigured) {
+      import('@clerk/nextjs').then((clerk) => {
+        setUserButton(() => clerk.UserButton);
+      });
+    }
+  }, []);
+
   return (
     <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-40">
       <div className="h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
@@ -34,13 +53,19 @@ export function AppHeader() {
           <ThemeToggle />
 
           {/* User menu */}
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: 'h-9 w-9',
-              },
-            }}
-          />
+          {hasClerkKeys && UserButton ? (
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: 'h-9 w-9',
+                },
+              }}
+            />
+          ) : (
+            <Button variant="ghost" size="icon">
+              <User className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </div>
     </header>
