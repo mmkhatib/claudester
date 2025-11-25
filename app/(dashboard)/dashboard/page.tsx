@@ -12,62 +12,75 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
+async function getStats() {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  try {
+    const [projectsJson, specsJson, tasksJson, agentsJson] = await Promise.all([
+      fetch(`${baseUrl}/api/projects`, { cache: 'no-store' }).then(r => r.ok ? r.json() : { data: [] }),
+      fetch(`${baseUrl}/api/specs`, { cache: 'no-store' }).then(r => r.ok ? r.json() : { data: [] }),
+      fetch(`${baseUrl}/api/tasks`, { cache: 'no-store' }).then(r => r.ok ? r.json() : { data: [] }),
+      fetch(`${baseUrl}/api/agents`, { cache: 'no-store' }).then(r => r.ok ? r.json() : { data: [] }),
+    ]);
+
+    // Unwrap the data from the standard API response
+    const projects = Array.isArray(projectsJson.data) ? projectsJson.data : (Array.isArray(projectsJson) ? projectsJson : []);
+    const specs = Array.isArray(specsJson.data) ? specsJson.data : (Array.isArray(specsJson) ? specsJson : []);
+    const tasks = Array.isArray(tasksJson.data) ? tasksJson.data : (Array.isArray(tasksJson) ? tasksJson : []);
+    const agents = Array.isArray(agentsJson.data) ? agentsJson.data : (Array.isArray(agentsJson) ? agentsJson : []);
+
+    return {
+      projects: {
+        total: projects.length,
+        active: projects.filter((p: any) => p.status === 'ACTIVE').length,
+      },
+      specs: {
+        total: specs.length,
+        inProgress: specs.filter((s: any) => s.phase === 'TASKS' || s.phase === 'IMPLEMENTATION').length,
+        pending: specs.filter((s: any) => s.phase === 'REQUIREMENTS').length,
+      },
+      tasks: {
+        total: tasks.length,
+        completed: tasks.filter((t: any) => t.status === 'COMPLETED').length,
+        inProgress: tasks.filter((t: any) => t.status === 'IN_PROGRESS').length,
+        pending: tasks.filter((t: any) => t.status === 'PENDING').length,
+      },
+      agents: {
+        active: agents.filter((a: any) => a.status === 'ACTIVE').length,
+        idle: agents.filter((a: any) => a.status === 'IDLE').length,
+      },
+    };
+  } catch (error) {
+    console.error('Failed to fetch stats:', error);
+    return {
+      projects: { total: 0, active: 0 },
+      specs: { total: 0, inProgress: 0, pending: 0 },
+      tasks: { total: 0, completed: 0, inProgress: 0, pending: 0 },
+      agents: { active: 0, idle: 0 },
+    };
+  }
+}
+
 export default async function DashboardPage() {
-  // TODO: Fetch real data from API
-  const stats = {
-    projects: { total: 5, active: 3 },
-    specs: { total: 12, inProgress: 4, pending: 2 },
-    tasks: { total: 45, completed: 28, inProgress: 10, pending: 7 },
-    agents: { active: 2, idle: 3 },
-  };
+  const stats = await getStats();
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'spec',
-      title: 'User Authentication System',
-      status: 'Requirements approved',
-      time: '2 hours ago',
-    },
-    {
-      id: 2,
-      type: 'task',
-      title: 'Implement login endpoint',
-      status: 'Completed',
-      time: '3 hours ago',
-    },
-    {
-      id: 3,
-      type: 'agent',
-      title: 'Development Agent #1',
-      status: 'Started task execution',
-      time: '4 hours ago',
-    },
-  ];
+  // Fetch real recent specs (active ones)
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  let activeSpecs: any[] = [];
 
-  const activeSpecs = [
-    {
-      id: '1',
-      title: 'User Authentication System',
-      phase: 'DESIGN',
-      progress: 50,
-      project: 'Platform Core',
-    },
-    {
-      id: '2',
-      title: 'Payment Integration',
-      phase: 'TASKS',
-      progress: 75,
-      project: 'E-commerce Module',
-    },
-    {
-      id: '3',
-      title: 'Analytics Dashboard',
-      phase: 'REQUIREMENTS',
-      progress: 25,
-      project: 'Analytics',
-    },
-  ];
+  try {
+    const specs = await fetch(`${baseUrl}/api/specs`, { cache: 'no-store' });
+    if (specs.ok) {
+      const json = await specs.json();
+      // API returns {success: true, data: {specs: [...], pagination: {...}}}
+      const allSpecs = json.data?.specs || json.specs || [];
+      activeSpecs = allSpecs
+        .filter((s: any) => s.phase !== 'COMPLETED')
+        .slice(0, 3);
+    }
+  } catch (error) {
+    console.error('Failed to fetch specs:', error);
+  }
 
   return (
     <div className="space-y-6">
@@ -182,39 +195,58 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {activeSpecs.map((spec) => (
-                <Link
-                  key={spec.id}
-                  href={`/specs/${spec.id}`}
-                  className="block p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h3 className="font-medium">{spec.title}</h3>
-                      <p className="text-sm text-zinc-500 mt-1">
-                        {spec.project}
-                      </p>
-                    </div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200">
-                      {spec.phase}
-                    </span>
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-zinc-600 dark:text-zinc-400">Progress</span>
-                      <span className="font-medium">{spec.progress}%</span>
-                    </div>
-                    <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all"
-                        style={{ width: `${spec.progress}%` }}
-                      />
-                    </div>
-                  </div>
+            {activeSpecs.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-8 w-8 text-zinc-400 mx-auto mb-3" />
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  No active specs. Create a new spec to get started.
+                </p>
+                <Link href="/specs/new">
+                  <Button size="sm" className="mt-3">Create Spec</Button>
                 </Link>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activeSpecs.map((spec) => {
+                  const progress = spec.progress || 0;
+                  return (
+                    <Link
+                      key={spec._id}
+                      href={`/specs/${spec._id}`}
+                      className="block p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-medium">{spec.name || spec.title}</h3>
+                          {spec.projectId && (
+                            <p className="text-sm text-zinc-500 mt-1">
+                              Project ID: {spec.projectId}
+                            </p>
+                          )}
+                        </div>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200">
+                          {spec.phase}
+                        </span>
+                      </div>
+                      {progress > 0 && (
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span className="text-zinc-600 dark:text-zinc-400">Progress</span>
+                            <span className="font-medium">{progress}%</span>
+                          </div>
+                          <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -235,29 +267,11 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start space-x-3 p-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-                >
-                  <div className="h-8 w-8 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center flex-shrink-0">
-                    {activity.type === 'spec' && <FileText className="h-4 w-4" />}
-                    {activity.type === 'task' && <CheckSquare className="h-4 w-4" />}
-                    {activity.type === 'agent' && <Bot className="h-4 w-4" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{activity.title}</p>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">
-                      {activity.status}
-                    </p>
-                    <p className="text-xs text-zinc-500 mt-1 flex items-center">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-8">
+              <Clock className="h-8 w-8 text-zinc-400 mx-auto mb-3" />
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Activity feed will show real-time updates from agents
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -92,7 +92,11 @@ export async function publishSpecUpdate(message: Omit<SpecUpdateMessage, 'type' 
     timestamp: new Date(),
   };
 
-  await redisPub.publish(Channel.SPEC_UPDATES, JSON.stringify(fullMessage));
+  try {
+    await redisPub.publish(Channel.SPEC_UPDATES, JSON.stringify(fullMessage));
+  } catch (error) {
+    loggers.redis.warn({ channel: Channel.SPEC_UPDATES, error }, 'Failed to publish message (Redis unavailable)');
+  }
 }
 
 export async function publishTaskUpdate(message: Omit<TaskUpdateMessage, 'type' | 'timestamp'>) {
@@ -102,7 +106,11 @@ export async function publishTaskUpdate(message: Omit<TaskUpdateMessage, 'type' 
     timestamp: new Date(),
   };
 
-  await redisPub.publish(Channel.TASK_UPDATES, JSON.stringify(fullMessage));
+  try {
+    await redisPub.publish(Channel.TASK_UPDATES, JSON.stringify(fullMessage));
+  } catch (error) {
+    loggers.redis.warn({ channel: Channel.TASK_UPDATES, error }, 'Failed to publish message (Redis unavailable)');
+  }
 }
 
 export async function publishAgentUpdate(message: Omit<AgentUpdateMessage, 'type' | 'timestamp'>) {
@@ -112,7 +120,11 @@ export async function publishAgentUpdate(message: Omit<AgentUpdateMessage, 'type
     timestamp: new Date(),
   };
 
-  await redisPub.publish(Channel.AGENT_UPDATES, JSON.stringify(fullMessage));
+  try {
+    await redisPub.publish(Channel.AGENT_UPDATES, JSON.stringify(fullMessage));
+  } catch (error) {
+    loggers.redis.warn({ channel: Channel.AGENT_UPDATES, error }, 'Failed to publish message (Redis unavailable)');
+  }
 }
 
 export async function publishTestResult(message: Omit<TestResultMessage, 'type' | 'timestamp'>) {
@@ -122,7 +134,11 @@ export async function publishTestResult(message: Omit<TestResultMessage, 'type' 
     timestamp: new Date(),
   };
 
-  await redisPub.publish(Channel.TEST_RESULTS, JSON.stringify(fullMessage));
+  try {
+    await redisPub.publish(Channel.TEST_RESULTS, JSON.stringify(fullMessage));
+  } catch (error) {
+    loggers.redis.warn({ channel: Channel.TEST_RESULTS, error }, 'Failed to publish message (Redis unavailable)');
+  }
 }
 
 export async function publishActivityLog(message: Omit<ActivityLogMessage, 'type' | 'timestamp'>) {
@@ -132,7 +148,11 @@ export async function publishActivityLog(message: Omit<ActivityLogMessage, 'type
     timestamp: new Date(),
   };
 
-  await redisPub.publish(Channel.ACTIVITY_LOG, JSON.stringify(fullMessage));
+  try {
+    await redisPub.publish(Channel.ACTIVITY_LOG, JSON.stringify(fullMessage));
+  } catch (error) {
+    loggers.redis.warn({ channel: Channel.ACTIVITY_LOG, error }, 'Failed to publish message (Redis unavailable)');
+  }
 }
 
 export async function publishSystemAlert(message: Omit<SystemAlertMessage, 'type' | 'timestamp'>) {
@@ -142,7 +162,11 @@ export async function publishSystemAlert(message: Omit<SystemAlertMessage, 'type
     timestamp: new Date(),
   };
 
-  await redisPub.publish(Channel.SYSTEM_ALERTS, JSON.stringify(fullMessage));
+  try {
+    await redisPub.publish(Channel.SYSTEM_ALERTS, JSON.stringify(fullMessage));
+  } catch (error) {
+    loggers.redis.warn({ channel: Channel.SYSTEM_ALERTS, error }, 'Failed to publish message (Redis unavailable)');
+  }
 }
 
 // Subscribe handlers

@@ -2,6 +2,12 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { User, UserRole, type IUser } from '@/backend/models';
 import { connectDB } from './mongodb';
 
+// Check if Clerk is configured
+const hasClerkKeys = () => {
+  return process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== 'your_clerk_publishable_key';
+};
+
 // RBAC permission definitions
 export const PERMISSIONS = {
   // Project permissions
@@ -46,6 +52,25 @@ export type Permission = keyof typeof PERMISSIONS;
  * Get the current authenticated user from the database
  */
 export async function getCurrentDBUser(): Promise<IUser | null> {
+  // If Clerk is not configured, return a default admin user for development
+  if (!hasClerkKeys()) {
+    await connectDB();
+
+    // Try to find or create a default admin user
+    let defaultUser = await User.findOne({ email: 'dev@claudester.local' });
+
+    if (!defaultUser) {
+      defaultUser = await User.create({
+        clerkId: 'dev-user',
+        email: 'dev@claudester.local',
+        name: 'Development User',
+        role: UserRole.ADMIN,
+      });
+    }
+
+    return defaultUser;
+  }
+
   const { userId } = auth();
 
   if (!userId) {

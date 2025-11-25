@@ -30,14 +30,28 @@ export default function NewProjectPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create project');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create project');
       }
 
       const data = await response.json();
-      router.push(`/projects/${data.data._id}`);
+      console.log('Created project:', data);
+
+      // Handle different response structures
+      const projectId = data._id || data.data?._id || data.id;
+
+      if (projectId) {
+        // Force a refresh before navigating
+        router.refresh();
+        router.push(`/projects/${projectId}`);
+      } else {
+        // Fallback to projects list if no ID
+        router.refresh();
+        router.push('/projects');
+      }
     } catch (error) {
       console.error('Error creating project:', error);
-      alert('Failed to create project. Please try again.');
+      alert(`Failed to create project: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }

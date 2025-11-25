@@ -1,6 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getEnv } from '@/lib/env';
 import { loggers } from '@/lib/logger';
+import { AIProvider } from './ai-providers/base-provider';
+import { ClaudeCodeCLIProvider } from './ai-providers/claude-code-cli-provider';
+import { AnthropicAPIProvider } from './ai-providers/anthropic-api-provider';
 
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
@@ -28,15 +31,34 @@ class ClaudeClient {
   private client: Anthropic;
   private defaultModel: string = 'claude-3-5-sonnet-20241022';
   private defaultMaxTokens: number = 4096;
+  private provider: AIProvider;
 
   constructor() {
     const env = getEnv();
 
+    // Initialize Anthropic client (for backwards compatibility with sendMessage)
     this.client = new Anthropic({
       apiKey: env.ANTHROPIC_API_KEY,
     });
 
-    loggers.agent.info('Claude client initialized');
+    // Initialize the AI provider based on environment variable
+    const aiProvider = process.env.AI_PROVIDER || 'claude-code-cli';
+
+    switch (aiProvider) {
+      case 'claude-code-cli':
+        this.provider = new ClaudeCodeCLIProvider();
+        loggers.agent.info('Using Claude Code CLI provider');
+        break;
+      case 'anthropic-api':
+        this.provider = new AnthropicAPIProvider();
+        loggers.agent.info('Using Anthropic API provider');
+        break;
+      default:
+        loggers.agent.warn({ provider: aiProvider }, 'Unknown AI provider, defaulting to Claude Code CLI');
+        this.provider = new ClaudeCodeCLIProvider();
+    }
+
+    loggers.agent.info({ provider: this.provider.getProviderInfo() }, 'Claude client initialized');
   }
 
   /**
@@ -146,66 +168,21 @@ class ClaudeClient {
    * Generate code based on a task description
    */
   async generateCode(taskDescription: string, context?: string): Promise<string> {
-    const systemPrompt = `You are an expert software developer. Generate clean, well-documented code based on the given task description. Follow best practices and write production-ready code.
-
-${context ? `Additional context:\n${context}` : ''}`;
-
-    const response = await this.sendMessage({
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: taskDescription,
-        },
-      ],
-      maxTokens: 8000,
-    });
-
-    return response.content;
+    return this.provider.generateCode(taskDescription, context);
   }
 
   /**
    * Review code and provide suggestions
    */
   async reviewCode(code: string, criteria?: string[]): Promise<string> {
-    const systemPrompt = `You are an expert code reviewer. Analyze the provided code and suggest improvements. Focus on code quality, best practices, security, and performance.`;
-
-    const criteriaText = criteria && criteria.length > 0
-      ? `\n\nAcceptance criteria:\n${criteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}`
-      : '';
-
-    const response = await this.sendMessage({
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Please review the following code:${criteriaText}\n\n\`\`\`\n${code}\n\`\`\``,
-        },
-      ],
-      maxTokens: 4000,
-    });
-
-    return response.content;
+    return this.provider.reviewCode(code, criteria);
   }
 
   /**
    * Generate tests for code
    */
   async generateTests(code: string, framework: string = 'jest'): Promise<string> {
-    const systemPrompt = `You are an expert at writing tests. Generate comprehensive unit tests for the provided code using ${framework}. Include edge cases and error scenarios.`;
-
-    const response = await this.sendMessage({
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Generate tests for this code:\n\n\`\`\`\n${code}\n\`\`\``,
-        },
-      ],
-      maxTokens: 6000,
-    });
-
-    return response.content;
+    return this.provider.generateTests(code, framework);
   }
 
   /**
@@ -219,43 +196,7 @@ ${context ? `Additional context:\n${context}` : ''}`;
     steps: string[];
     estimatedComplexity: 'low' | 'medium' | 'high';
   }> {
-    const systemPrompt = `You are a technical analyst. Analyze the given task and break it down into clear, actionable steps. Also estimate the complexity.`;
-
-    const criteriaText = acceptanceCriteria.length > 0
-      ? `\n\nAcceptance criteria:\n${acceptanceCriteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}`
-      : '';
-
-    const response = await this.sendMessage({
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Analyze this task and provide:\n1. Overall analysis\n2. Step-by-step breakdown\n3. Complexity estimate (low/medium/high)\n\nTask: ${taskDescription}${criteriaText}`,
-        },
-      ],
-      maxTokens: 3000,
-    });
-
-    // Simple parsing - in production, you might want structured output
-    const content = response.content;
-
-    // Extract complexity from response
-    let estimatedComplexity: 'low' | 'medium' | 'high' = 'medium';
-    if (content.toLowerCase().includes('complexity: low')) {
-      estimatedComplexity = 'low';
-    } else if (content.toLowerCase().includes('complexity: high')) {
-      estimatedComplexity = 'high';
-    }
-
-    // Extract steps (simple heuristic)
-    const stepMatches = content.match(/\d+\.\s+(.+)/g) || [];
-    const steps = stepMatches.map((s) => s.replace(/^\d+\.\s+/, ''));
-
-    return {
-      analysis: content,
-      steps,
-      estimatedComplexity,
-    };
+    return this.provider.analyzeTask(taskDescription, acceptanceCriteria);
   }
 
   /**
@@ -266,22 +207,56 @@ ${context ? `Additional context:\n${context}` : ''}`;
     errorMessage: string,
     context?: string
   ): Promise<string> {
-    const systemPrompt = `You are an expert debugger. Fix the provided code based on the error message. Provide only the corrected code.`;
+    return this.provider.fixCode(code, errorMessage, context);
+  }
 
-    const contextText = context ? `\n\nContext:\n${context}` : '';
+  /**
+   * Generate specifications from a project description using extended thinking
+   */
+  async generateSpecifications(
+    projectName: string,
+    projectDescription: string
+  ): Promise<Array<{
+    title: string;
+    description: string;
+    priority: 'P0' | 'P1' | 'P2';
+  }>> {
+    return this.provider.generateSpecifications(projectName, projectDescription);
+  }
 
-    const response = await this.sendMessage({
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Fix this code:\n\n\`\`\`\n${code}\n\`\`\`\n\nError:\n${errorMessage}${contextText}`,
-        },
-      ],
-      maxTokens: 6000,
-    });
+  /**
+   * Generate requirements for a specification
+   */
+  async generateRequirements(
+    specName: string,
+    specDescription: string,
+    projectContext?: string
+  ) {
+    return this.provider.generateRequirements(specName, specDescription, projectContext);
+  }
 
-    return response.content;
+  /**
+   * Generate design for a specification
+   */
+  async generateDesign(
+    specName: string,
+    specDescription: string,
+    requirements: any,
+    projectContext?: string
+  ) {
+    return this.provider.generateDesign(specName, specDescription, requirements, projectContext);
+  }
+
+  /**
+   * Generate tasks for a specification
+   */
+  async generateTasks(
+    specName: string,
+    specDescription: string,
+    requirements: any,
+    design: any
+  ) {
+    return this.provider.generateTasks(specName, specDescription, requirements, design);
   }
 
   /**
@@ -291,6 +266,7 @@ ${context ? `Additional context:\n${context}` : ''}`;
     return {
       defaultModel: this.defaultModel,
       defaultMaxTokens: this.defaultMaxTokens,
+      provider: this.provider.getProviderInfo(),
     };
   }
 }

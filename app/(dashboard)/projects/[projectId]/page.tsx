@@ -12,6 +12,7 @@ import {
   Clock,
   TrendingUp,
 } from 'lucide-react';
+import { GenerateSpecsButton } from './generate-specs-button';
 
 interface PageProps {
   params: {
@@ -19,56 +20,89 @@ interface PageProps {
   };
 }
 
+async function getProject(projectId: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  try {
+    const res = await fetch(`${baseUrl}/api/projects/${projectId}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    // Unwrap the data from the standard API response
+    return json.data || json;
+  } catch (error) {
+    console.error('Failed to fetch project:', error);
+    return null;
+  }
+}
+
+async function getProjectSpecs(projectId: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  try {
+    const res = await fetch(`${baseUrl}/api/specs?projectId=${projectId}`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const json = await res.json();
+    // API returns {success: true, data: {specs: [...], pagination: {...}}}
+    const specs = json.data?.specs || json.specs || [];
+    return Array.isArray(specs) ? specs : [];
+  } catch (error) {
+    console.error('Failed to fetch specs:', error);
+    return [];
+  }
+}
+
+async function getProjectTasks(projectId: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  try {
+    const res = await fetch(`${baseUrl}/api/tasks?projectId=${projectId}`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const json = await res.json();
+    // API returns {success: true, data: {tasks: [...], pagination: {...}}}
+    const tasks = json.data?.tasks || json.tasks || [];
+    return Array.isArray(tasks) ? tasks : [];
+  } catch (error) {
+    console.error('Failed to fetch tasks:', error);
+    return [];
+  }
+}
+
+function getRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - new Date(date).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+  return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+}
+
 export default async function ProjectDetailPage({ params }: PageProps) {
-  // TODO: Fetch real data from API
-  const project = {
-    id: params.projectId,
-    name: 'Platform Core',
-    description: 'Core platform features and infrastructure',
-    status: 'active',
-    createdAt: '2024-11-10',
-    updatedAt: '2 hours ago',
-    members: [
-      { id: '1', name: 'John Doe', email: 'john@example.com' },
-      { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
-    ],
-  };
-
-  const specs = [
-    {
-      id: '1',
-      title: 'User Authentication System',
-      phase: 'DESIGN',
-      status: 'IN_PROGRESS',
-      progress: 50,
-      updatedAt: '2 hours ago',
-    },
-    {
-      id: '2',
-      title: 'API Rate Limiting',
-      phase: 'TASKS',
-      status: 'IN_PROGRESS',
-      progress: 75,
-      updatedAt: '5 hours ago',
-    },
-    {
-      id: '3',
-      title: 'Database Migration System',
-      phase: 'IMPLEMENTATION',
-      status: 'IN_PROGRESS',
-      progress: 90,
-      updatedAt: '1 day ago',
-    },
-  ];
-
-  const stats = {
-    specs: { total: 5, completed: 2, inProgress: 3 },
-    tasks: { total: 23, completed: 15, inProgress: 6, pending: 2 },
-  };
+  const [project, specs, tasks] = await Promise.all([
+    getProject(params.projectId),
+    getProjectSpecs(params.projectId),
+    getProjectTasks(params.projectId),
+  ]);
 
   if (!project) {
     notFound();
   }
+
+  const stats = {
+    specs: {
+      total: specs.length,
+      completed: specs.filter((s: any) => s.phase === 'COMPLETED').length,
+      inProgress: specs.filter((s: any) => s.phase === 'IMPLEMENTATION' || s.phase === 'TASKS').length,
+    },
+    tasks: {
+      total: tasks.length,
+      completed: tasks.filter((t: any) => t.status === 'COMPLETED').length,
+      inProgress: tasks.filter((t: any) => t.status === 'IN_PROGRESS').length,
+      pending: tasks.filter((t: any) => t.status === 'PENDING').length,
+    },
+  };
 
   return (
     <div className="space-y-6">
@@ -77,26 +111,26 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         <div>
           <h1 className="text-3xl font-bold">{project.name}</h1>
           <p className="text-zinc-600 dark:text-zinc-400 mt-1">
-            {project.description}
+            {project.description || 'No description'}
           </p>
           <div className="flex items-center space-x-4 mt-3">
             <Badge variant="outline" className="capitalize">
-              {project.status}
+              {project.status?.toLowerCase() || 'active'}
             </Badge>
             <span className="text-sm text-zinc-500 flex items-center">
               <Clock className="h-3.5 w-3.5 mr-1" />
-              Updated {project.updatedAt}
+              Updated {project.updatedAt ? getRelativeTime(project.updatedAt) : 'recently'}
             </span>
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Link href={`/specs/new?projectId=${project.id}`}>
+          <Link href={`/specs/new?projectId=${project._id}`}>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               New Spec
             </Button>
           </Link>
-          <Link href={`/projects/${project.id}/settings`}>
+          <Link href={`/projects/${project._id}/settings`}>
             <Button variant="outline" size="icon">
               <Settings className="h-4 w-4" />
             </Button>
@@ -151,7 +185,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                   Team Members
                 </p>
-                <p className="text-3xl font-bold mt-2">{project.members.length}</p>
+                <p className="text-3xl font-bold mt-2">{project.teamMembers?.length || 0}</p>
                 <p className="text-sm text-zinc-500 mt-1">
                   Active collaborators
                 </p>
@@ -174,50 +208,73 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 Feature specs for this project
               </CardDescription>
             </div>
-            <Link href={`/specs/new?projectId=${project.id}`}>
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Spec
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <GenerateSpecsButton projectId={project._id.toString()} />
+              <Link href={`/specs/new?projectId=${project._id}`}>
+                <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Spec
+                </Button>
+              </Link>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {specs.map((spec) => (
-              <Link
-                key={spec.id}
-                href={`/specs/${spec.id}`}
-                className="block p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-medium">{spec.title}</h3>
-                    <p className="text-sm text-zinc-500 mt-1 flex items-center">
-                      <Clock className="h-3.5 w-3.5 mr-1" />
-                      Updated {spec.updatedAt}
-                    </p>
+          {specs.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-zinc-400 mx-auto mb-3" />
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                No specs yet. Generate specs automatically with AI or create them manually.
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <GenerateSpecsButton projectId={project._id.toString()} />
+                <Link href={`/specs/new?projectId=${project._id}`}>
+                  <Button size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Manually
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {specs.map((spec: any) => (
+                <Link
+                  key={spec._id}
+                  href={`/specs/${spec._id}`}
+                  className="block p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-medium">{spec.name || spec.title}</h3>
+                      <p className="text-sm text-zinc-500 mt-1 flex items-center">
+                        <Clock className="h-3.5 w-3.5 mr-1" />
+                        Updated {spec.updatedAt ? getRelativeTime(spec.updatedAt) : 'recently'}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline">{spec.phase || 'REQUIREMENTS'}</Badge>
+                      {spec.status && <Badge variant="secondary">{spec.status}</Badge>}
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline">{spec.phase}</Badge>
-                    <Badge variant="secondary">{spec.status}</Badge>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-zinc-600 dark:text-zinc-400">Progress</span>
-                    <span className="font-medium">{spec.progress}%</span>
-                  </div>
-                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all"
-                      style={{ width: `${spec.progress}%` }}
-                    />
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                  {spec.progress !== undefined && (
+                    <div>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-zinc-600 dark:text-zinc-400">Progress</span>
+                        <span className="font-medium">{spec.progress}%</span>
+                      </div>
+                      <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          style={{ width: `${spec.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -238,27 +295,21 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {project.members.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="h-10 w-10 bg-blue-100 dark:bg-blue-950 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                      {member.name.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium">{member.name}</p>
-                    <p className="text-sm text-zinc-500">{member.email}</p>
-                  </div>
-                </div>
-                <Badge variant="outline">Admin</Badge>
-              </div>
-            ))}
-          </div>
+          {!project.teamMembers || project.teamMembers.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-zinc-400 mx-auto mb-3" />
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                No team members yet.
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-zinc-400 mx-auto mb-3" />
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                {project.teamMembers.length} team {project.teamMembers.length === 1 ? 'member' : 'members'}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
