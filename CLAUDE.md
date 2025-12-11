@@ -115,6 +115,61 @@ This file provides critical context for Claude Code to maintain consistency and 
 6. **ASK** before committing code
 7. **MAINTAIN** consistency with existing codebase patterns
 
+## 📚 Development Standards (MANDATORY)
+
+### Critical Documents - Read Before Every Task
+All AI agents and developers MUST consult these documents before writing code:
+
+1. **[Style Guide](./docs/standards/STYLE_GUIDE.md)** - Code formatting, naming conventions, patterns
+   - TypeScript standards
+   - React/Next.js patterns
+   - File organization
+   - Error handling
+
+2. **[API Contracts](./docs/standards/API_CONTRACTS.md)** - API specifications and service interfaces
+   - Standard response formats
+   - Endpoint documentation
+   - Data models (IProject, ISpec, ITask, IAgent)
+   - Service interfaces
+   - WebSocket events
+
+3. **[Agent Guidelines](./docs/standards/AGENT_GUIDELINES.md)** - AI agent output standards
+   - Code generation standards
+   - Documentation requirements
+   - Communication standards
+   - Quality checks
+   - Prohibited practices
+
+4. **[Code Review Checklist](./docs/standards/CODE_REVIEW.md)** - Quality gates and review process
+   - Automated quality gates (lint, type-check, tests, build)
+   - Comprehensive review checklist
+   - Common issues and solutions
+
+### Configuration Files
+- `.eslintrc.json` - ESLint rules (enforced)
+- `.prettierrc.json` - Code formatting (enforced)
+- `tsconfig.json` - TypeScript configuration
+
+### Before Writing ANY Code:
+```bash
+# 1. Read the active spec
+cat spec/.current-spec
+cat .current-task
+
+# 2. Review relevant standards
+cat docs/standards/STYLE_GUIDE.md
+cat docs/standards/API_CONTRACTS.md
+cat docs/standards/AGENT_GUIDELINES.md
+
+# 3. Study existing similar code
+# Use Glob/Grep to find examples
+
+# 4. Run quality checks before committing
+npm run lint
+npm run type-check
+npm test
+```
+
 ## 🏗️ Current System State
 
 ### What's Working
