@@ -13,6 +13,8 @@ import {
 } from '@/lib/api-utils';
 import { publishActivityLog } from '@/lib/pubsub';
 import { EventType } from '@/backend/models';
+import { createSpecDirectory } from '@/backend/utils/workspace';
+import { loggers } from '@/lib/logger';
 
 // Validation schemas
 const CreateSpecSchema = z.object({
@@ -134,6 +136,24 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
   const populatedSpec = await Spec.findById(spec._id)
     .populate('projectId', 'name');
+
+  // Create spec directory in project workspace
+  if (project.workspacePath) {
+    try {
+      // Format spec ID as 001, 002, etc.
+      const specId = specNumber.toString().padStart(3, '0');
+      await createSpecDirectory(project.workspacePath, specId, spec.toObject());
+
+      loggers.spec.info(
+        { projectId: project._id, specId, workspacePath: project.workspacePath },
+        'Created spec directory in workspace'
+      );
+    } catch (error) {
+      loggers.spec.error({ error, projectId: project._id }, 'Failed to create spec directory');
+      // Don't fail the request, but log the error
+      // The directory can be created later if needed
+    }
+  }
 
   // Publish activity log
   await publishActivityLog({

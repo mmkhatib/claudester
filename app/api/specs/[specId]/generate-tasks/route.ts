@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { Spec, Task } from '@/backend/models';
+import { Spec, Task, Project } from '@/backend/models';
 import { requirePermission } from '@/lib/auth';
 import {
   successResponse,
@@ -11,6 +11,8 @@ import {
 import { claudeClient } from '@/backend/services/claude-client';
 import { publishActivityLog } from '@/lib/pubsub';
 import { EventType } from '@/backend/models';
+import { writeTasks } from '@/backend/utils/workspace';
+import { loggers } from '@/lib/logger';
 
 interface RouteContext {
   params: {
@@ -45,10 +47,10 @@ export const POST = withErrorHandling(async (
     return validationError(new Error('Design must be generated first'));
   }
 
-  console.log('Generating tasks for spec:', spec.name);
+  console.log('Generating tasks for spec:', spec.title);
 
   const generatedTasks = await claudeClient.generateTasks(
-    spec.name,
+    spec.title,
     spec.description || 'No description provided',
     spec.requirements,
     spec.design
@@ -97,10 +99,35 @@ export const POST = withErrorHandling(async (
   spec.progress = 75; // 75% complete, ready for implementation
   await spec.save();
 
+  // Write tasks to file system
+  const project = await Project.findById(spec.projectId);
+  if (project && project.workspacePath) {
+    try {
+      const specId = spec.specNumber.toString().padStart(3, '0');
+      // Convert task documents to plain objects for writeTasks
+      const taskData = {
+        tasks: generatedTasks,
+        summary: {
+          totalTasks: createdTasks.length,
+          totalEstimatedHours: createdTasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0),
+        },
+      };
+      await writeTasks(project.workspacePath, specId, taskData);
+
+      loggers.spec.info(
+        { projectId: project._id, specId, workspacePath: project.workspacePath },
+        'Wrote tasks to workspace file'
+      );
+    } catch (error) {
+      loggers.spec.error({ error, projectId: project._id }, 'Failed to write tasks to file');
+      // Don't fail the request, but log the error
+    }
+  }
+
   await publishActivityLog({
     eventType: EventType.SPEC_UPDATED,
     specId: spec._id,
-    message: `${createdTasks.length} tasks generated for: ${spec.name}`,
+    message: `${createdTasks.length} tasks generated for: ${spec.title}`,
     metadata: { phase: 'IMPLEMENTATION', taskCount: createdTasks.length },
   });
 
