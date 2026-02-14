@@ -18,6 +18,7 @@ import {
 const CreateProjectSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().optional(),
+  workspacePath: z.string().min(1, 'Workspace path is required'),
 });
 
 /**
@@ -64,12 +65,14 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return validationError(validationResult.error);
   }
 
-  const { name, description } = validationResult.data;
+  const { name, description, workspacePath: customWorkspacePath } = validationResult.data;
 
   console.log('POST /api/projects - Creating project for user ID:', user._id);
 
-  // Generate workspace path
-  const workspacePath = generateWorkspacePath(name, user._id.toString());
+  // Use custom workspace path if provided, otherwise generate one
+  const workspacePath = customWorkspacePath && customWorkspacePath.trim() !== ''
+    ? customWorkspacePath
+    : generateWorkspacePath(name, user._id.toString());
 
   // Create project
   const project = await Project.create({

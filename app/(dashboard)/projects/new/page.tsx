@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FolderOpen } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NewProjectPage() {
@@ -16,7 +16,40 @@ export default function NewProjectPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    workspacePath: '',
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFolderSelect = async () => {
+    // Try using the File System Access API (modern browsers)
+    if ('showDirectoryPicker' in window) {
+      try {
+        const dirHandle = await (window as any).showDirectoryPicker();
+        // Get the full path (this is tricky in browsers, so we'll use the name)
+        // Note: For security reasons, browsers don't expose full filesystem paths
+        // We'll need to construct a path or use the directory name
+        setFormData({ ...formData, workspacePath: dirHandle.name });
+      } catch (err) {
+        // User cancelled the picker
+        console.log('Folder selection cancelled');
+      }
+    } else {
+      // Fallback: trigger the hidden file input
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // Get the path from the first file
+      const file = files[0];
+      // Extract the directory path (webkitRelativePath gives us the folder structure)
+      const path = (file as any).webkitRelativePath || file.name;
+      const folderPath = path.split('/')[0];
+      setFormData({ ...formData, workspacePath: folderPath });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,15 +73,10 @@ export default function NewProjectPage() {
       // Handle different response structures
       const projectId = data._id || data.data?._id || data.id;
 
-      if (projectId) {
-        // Force a refresh before navigating
-        router.refresh();
-        router.push(`/projects/${projectId}`);
-      } else {
-        // Fallback to projects list if no ID
-        router.refresh();
-        router.push('/projects');
-      }
+      // Redirect to projects list instead of detail page
+      // This avoids 404 errors from race conditions in data fetching
+      router.refresh();
+      router.push('/projects');
     } catch (error) {
       console.error('Error creating project:', error);
       alert(`Failed to create project: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -113,6 +141,42 @@ export default function NewProjectPage() {
               />
               <p className="text-sm text-zinc-500">
                 A brief overview of what this project will accomplish
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="workspacePath">Workspace Folder *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="workspacePath"
+                  placeholder="Select or enter workspace folder path"
+                  value={formData.workspacePath}
+                  onChange={(e) => setFormData({ ...formData, workspacePath: e.target.value })}
+                  required
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleFolderSelect}
+                  className="shrink-0"
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Browse
+                </Button>
+              </div>
+              {/* Hidden file input for fallback */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                // @ts-ignore - webkitdirectory is not in standard types
+                webkitdirectory="true"
+                directory="true"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              <p className="text-sm text-zinc-500">
+                Absolute path to the project workspace folder. Click Browse to select a folder.
               </p>
             </div>
           </CardContent>
