@@ -13,6 +13,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { GenerateSpecsButton } from './generate-specs-button';
+import { ArchitectureDisplay } from '@/components/architecture-display';
+import { GenerateArchitectureButton } from './generate-architecture-button';
 
 interface PageProps {
   params: {
@@ -197,6 +199,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Architecture */}
+      <ArchitectureDisplay 
+        architecture={project.architecture}
+        projectId={project._id.toString()}
+      />
 
       {/* Specs list */}
       <Card>
