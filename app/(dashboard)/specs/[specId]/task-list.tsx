@@ -232,11 +232,13 @@ export function TaskList({ tasks, specId }: TaskListProps) {
         {tasks.map((task: Task, index: number) => (
           <div
             key={task._id}
-            className="flex items-start gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+            className="flex items-start gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer"
+            onClick={() => router.push(`/tasks/${task._id}`)}
           >
             <Checkbox
               checked={selectedTasks.has(task._id)}
               onCheckedChange={(checked) => handleSelectTask(task._id, checked as boolean)}
+              onClick={(e) => e.stopPropagation()}
               aria-label={`Select task ${task.title}`}
               className="mt-1"
             />
@@ -262,7 +264,10 @@ export function TaskList({ tasks, specId }: TaskListProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleStartTask(task._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartTask(task._id);
+                    }}
                     disabled={startingTaskId === task._id || task.status === 'COMPLETED'}
                   >
                     {startingTaskId === task._id ? (

@@ -10,6 +10,7 @@ import path from 'path';
 import { IProject } from '../models/Project';
 import { ISpec } from '../models/Spec';
 import { loggers } from '@/lib/logger';
+import { workspaceManager } from '../services/workspace-manager';
 
 /**
  * Get the workspace root directory from environment or use default
@@ -47,65 +48,25 @@ export function generateSpecId(specNumber: number, title: string): string {
 }
 
 /**
- * Initialize project workspace directory structure
+ * Initialize project workspace directory structure using .claudester/ format
  */
 export async function initializeProjectWorkspace(
   workspacePath: string,
   project: IProject
 ): Promise<void> {
   try {
-    loggers.server.info({ workspacePath, projectName: project.name }, 'Initializing project workspace');
+    loggers.server.info({ workspacePath, projectName: project.name }, 'Initializing project workspace with .claudester structure');
 
-    // Create directory structure
-    await fs.mkdir(workspacePath, { recursive: true });
-    await fs.mkdir(path.join(workspacePath, 'spec'), { recursive: true });
-    await fs.mkdir(path.join(workspacePath, '.claude'), { recursive: true });
-    await fs.mkdir(path.join(workspacePath, 'src'), { recursive: true });
-    await fs.mkdir(path.join(workspacePath, 'tests'), { recursive: true });
-    await fs.mkdir(path.join(workspacePath, 'docs'), { recursive: true });
-
-    // Create spec repository README
-    await fs.writeFile(
-      path.join(workspacePath, 'spec', 'README.md'),
-      generateSpecRepositoryReadme(project)
+    // Use the WorkspaceManager to create .claudester/ structure
+    const actualWorkspacePath = await workspaceManager.initializeWorkspace(
+      project.name,
+      project._id.toString()
     );
 
-    // Create workflow guide
-    await fs.writeFile(
-      path.join(workspacePath, 'spec', 'WORKFLOW.md'),
-      generateWorkflowDoc()
-    );
-
-    // Create .claude context
-    await fs.writeFile(
-      path.join(workspacePath, '.claude', 'context.md'),
-      generateClaudeContext(project)
-    );
-
-    await fs.writeFile(
-      path.join(workspacePath, '.claude', 'instructions.md'),
-      generateClaudeInstructions(project)
-    );
-
-    // Create .current-task
-    await fs.writeFile(
-      path.join(workspacePath, '.current-task'),
-      generateInitialTask(project)
-    );
-
-    // Create project README
-    await fs.writeFile(
-      path.join(workspacePath, 'README.md'),
-      generateProjectReadme(project)
-    );
-
-    // Create .gitignore
-    await fs.writeFile(
-      path.join(workspacePath, '.gitignore'),
-      generateGitignore()
-    );
-
-    loggers.server.info({ workspacePath }, 'Project workspace initialized successfully');
+    loggers.server.info({
+      workspacePath: actualWorkspacePath,
+      projectId: project._id
+    }, 'Project workspace initialized successfully with .claudester/ structure');
   } catch (error) {
     loggers.server.error({ error, workspacePath }, 'Failed to initialize project workspace');
     throw new Error(`Failed to initialize workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -113,7 +74,7 @@ export async function initializeProjectWorkspace(
 }
 
 /**
- * Create spec directory structure
+ * Create spec directory structure using .claudester/ format
  */
 export async function createSpecDirectory(
   workspacePath: string,
@@ -121,44 +82,20 @@ export async function createSpecDirectory(
   spec: ISpec
 ): Promise<void> {
   try {
-    const specPath = path.join(workspacePath, 'spec', specId);
+    loggers.server.info({ workspacePath, specId, specTitle: spec.title }, 'Creating spec directory in .claudester/');
 
-    loggers.server.info({ specPath, specTitle: spec.title }, 'Creating spec directory');
+    // Use the WorkspaceManager to create spec in .claudester/specs/
+    await workspaceManager.createSpec(workspacePath, specId, {
+      specName: spec.title,
+      currentPhase: spec.currentPhase || 'requirements',
+      requirementsApproved: spec.requirementsApproved || false,
+      designApproved: spec.designApproved || false,
+      tasksApproved: spec.tasksApproved || false,
+      priority: spec.priority || 'P1',
+      progress: spec.progress || 0,
+    });
 
-    // Create spec directory
-    await fs.mkdir(specPath, { recursive: true });
-
-    // Create README.md (spec status dashboard)
-    await fs.writeFile(
-      path.join(specPath, 'README.md'),
-      generateSpecReadme(spec, specId)
-    );
-
-    // Create requirements.md (initially empty or with template)
-    await fs.writeFile(
-      path.join(specPath, 'requirements.md'),
-      generateRequirementsTemplate(spec)
-    );
-
-    // Create design.md (placeholder)
-    await fs.writeFile(
-      path.join(specPath, 'design.md'),
-      generateDesignTemplate(spec)
-    );
-
-    // Create tasks.md (placeholder)
-    await fs.writeFile(
-      path.join(specPath, 'tasks.md'),
-      generateTasksTemplate(spec)
-    );
-
-    // Update .current-spec
-    await fs.writeFile(
-      path.join(workspacePath, 'spec', '.current-spec'),
-      specId
-    );
-
-    loggers.server.info({ specPath }, 'Spec directory created successfully');
+    loggers.server.info({ workspacePath, specId }, 'Spec directory created successfully in .claudester/specs/');
   } catch (error) {
     loggers.server.error({ error, specId }, 'Failed to create spec directory');
     throw new Error(`Failed to create spec directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -166,7 +103,7 @@ export async function createSpecDirectory(
 }
 
 /**
- * Write requirements to file
+ * Write requirements to file in .claudester/ structure
  */
 export async function writeRequirements(
   workspacePath: string,
@@ -174,14 +111,10 @@ export async function writeRequirements(
   requirements: any
 ): Promise<void> {
   try {
-    const specPath = path.join(workspacePath, 'spec', specId);
-    const requirementsPath = path.join(specPath, 'requirements.md');
-
     const content = formatRequirements(requirements);
+    await workspaceManager.updateSpecFile(workspacePath, specId, 'requirements', content);
 
-    await fs.writeFile(requirementsPath, content);
-
-    loggers.server.info({ specId, requirementsPath }, 'Requirements written to file');
+    loggers.server.info({ specId, workspacePath }, 'Requirements written to .claudester/specs/');
   } catch (error) {
     loggers.server.error({ error, specId }, 'Failed to write requirements');
     throw new Error(`Failed to write requirements: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -189,7 +122,7 @@ export async function writeRequirements(
 }
 
 /**
- * Write design to file
+ * Write design to file in .claudester/ structure
  */
 export async function writeDesign(
   workspacePath: string,
@@ -197,14 +130,10 @@ export async function writeDesign(
   design: any
 ): Promise<void> {
   try {
-    const specPath = path.join(workspacePath, 'spec', specId);
-    const designPath = path.join(specPath, 'design.md');
-
     const content = formatDesign(design);
+    await workspaceManager.updateSpecFile(workspacePath, specId, 'design', content);
 
-    await fs.writeFile(designPath, content);
-
-    loggers.server.info({ specId, designPath }, 'Design written to file');
+    loggers.server.info({ specId, workspacePath }, 'Design written to .claudester/specs/');
   } catch (error) {
     loggers.server.error({ error, specId }, 'Failed to write design');
     throw new Error(`Failed to write design: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -212,7 +141,7 @@ export async function writeDesign(
 }
 
 /**
- * Write tasks to file
+ * Write tasks to file in .claudester/ structure
  */
 export async function writeTasks(
   workspacePath: string,
@@ -220,14 +149,10 @@ export async function writeTasks(
   tasks: any[]
 ): Promise<void> {
   try {
-    const specPath = path.join(workspacePath, 'spec', specId);
-    const tasksPath = path.join(specPath, 'tasks.md');
-
     const content = formatTasks(tasks);
+    await workspaceManager.updateSpecFile(workspacePath, specId, 'tasks', content);
 
-    await fs.writeFile(tasksPath, content);
-
-    loggers.server.info({ specId, tasksPath, taskCount: tasks.length }, 'Tasks written to file');
+    loggers.server.info({ specId, workspacePath, taskCount: tasks.length }, 'Tasks written to .claudester/specs/');
   } catch (error) {
     loggers.server.error({ error, specId }, 'Failed to write tasks');
     throw new Error(`Failed to write tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -235,56 +160,53 @@ export async function writeTasks(
 }
 
 /**
- * Read requirements from file
+ * Read requirements from file in .claudester/ structure
  */
 export async function readRequirements(workspacePath: string, specId: string): Promise<any | null> {
   try {
-    const requirementsPath = path.join(workspacePath, 'spec', specId, 'requirements.md');
-    const content = await fs.readFile(requirementsPath, 'utf-8');
+    const specContext = await workspaceManager.loadSpecContext(workspacePath, specId);
 
     // Parse markdown back to structured format
-    return parseRequirementsMarkdown(content);
+    return parseRequirementsMarkdown(specContext.requirements);
   } catch (error) {
     // File doesn't exist or can't be read
-    loggers.server.debug({ specId, error }, 'Requirements file not found');
+    loggers.server.debug({ specId, error }, 'Requirements file not found in .claudester/specs/');
     return null;
   }
 }
 
 /**
- * Read design from file
+ * Read design from file in .claudester/ structure
  */
 export async function readDesign(workspacePath: string, specId: string): Promise<any | null> {
   try {
-    const designPath = path.join(workspacePath, 'spec', specId, 'design.md');
-    const content = await fs.readFile(designPath, 'utf-8');
+    const specContext = await workspaceManager.loadSpecContext(workspacePath, specId);
 
     // Parse markdown back to structured format
-    return parseDesignMarkdown(content);
+    return parseDesignMarkdown(specContext.design);
   } catch (error) {
-    loggers.server.debug({ specId, error }, 'Design file not found');
+    loggers.server.debug({ specId, error }, 'Design file not found in .claudester/specs/');
     return null;
   }
 }
 
 /**
- * Read tasks from file
+ * Read tasks from file in .claudester/ structure
  */
 export async function readTasks(workspacePath: string, specId: string): Promise<any[] | null> {
   try {
-    const tasksPath = path.join(workspacePath, 'spec', specId, 'tasks.md');
-    const content = await fs.readFile(tasksPath, 'utf-8');
+    const specContext = await workspaceManager.loadSpecContext(workspacePath, specId);
 
     // Parse markdown back to structured format
-    return parseTasksMarkdown(content);
+    return parseTasksMarkdown(specContext.tasks);
   } catch (error) {
-    loggers.server.debug({ specId, error }, 'Tasks file not found');
+    loggers.server.debug({ specId, error }, 'Tasks file not found in .claudester/specs/');
     return null;
   }
 }
 
 /**
- * Check if approval marker exists
+ * Check if approval marker exists in .claudester/ structure
  */
 export async function checkApproval(
   workspacePath: string,
@@ -292,16 +214,15 @@ export async function checkApproval(
   phase: 'requirements' | 'design' | 'tasks'
 ): Promise<boolean> {
   try {
-    const markerPath = path.join(workspacePath, 'spec', specId, `.${phase}-approved`);
-    await fs.access(markerPath);
-    return true;
+    const specContext = await workspaceManager.loadSpecContext(workspacePath, specId);
+    return specContext.approvals[phase] || false;
   } catch {
     return false;
   }
 }
 
 /**
- * Create approval marker file
+ * Create approval marker file in .claudester/ structure
  */
 export async function createApprovalMarker(
   workspacePath: string,
@@ -309,10 +230,9 @@ export async function createApprovalMarker(
   phase: 'requirements' | 'design' | 'tasks'
 ): Promise<void> {
   try {
-    const markerPath = path.join(workspacePath, 'spec', specId, `.${phase}-approved`);
-    await fs.writeFile(markerPath, new Date().toISOString());
+    await workspaceManager.approvePhase(workspacePath, specId, phase);
 
-    loggers.server.info({ specId, phase }, 'Approval marker created');
+    loggers.server.info({ specId, phase }, 'Approval marker created in .claudester/specs/');
   } catch (error) {
     loggers.server.error({ error, specId, phase }, 'Failed to create approval marker');
     throw new Error(`Failed to create approval marker: ${error instanceof Error ? error.message : 'Unknown error'}`);

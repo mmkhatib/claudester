@@ -13,9 +13,9 @@ import {
 import { ProjectActions } from './project-actions';
 
 async function getProjects() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
   try {
+    // Use environment variable for server-side fetch
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
     const res = await fetch(`${baseUrl}/api/projects`, { cache: 'no-store' });
     if (!res.ok) return [];
     const json = await res.json();
@@ -30,9 +30,9 @@ async function getProjects() {
 }
 
 async function getProjectStats(projectId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
   try {
+    // Use environment variable for server-side fetch
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
     const [specsJson, tasksJson] = await Promise.all([
       fetch(`${baseUrl}/api/specs?projectId=${projectId}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : { data: { specs: [], tasks: [] } }),
       fetch(`${baseUrl}/api/tasks?projectId=${projectId}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : { data: { tasks: [] } }),

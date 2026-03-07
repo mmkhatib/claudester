@@ -33,7 +33,7 @@ export const POST = withErrorHandling(async (
 
   const { specId } = context.params;
 
-  const spec = await Spec.findById(specId);
+  const spec = await Spec.findById(specId).populate('projectId', 'name description architecture');
 
   if (!spec) {
     return notFoundError('Specification');
@@ -49,11 +49,25 @@ export const POST = withErrorHandling(async (
 
   console.log('Generating tasks for spec:', spec.title);
 
+  const project = spec.projectId as any;
+
+  // Get related specs with their status
+  const relatedSpecs = await Spec.find({
+    projectId: spec.projectId,
+    _id: { $ne: spec._id }
+  }).select('name status').limit(10);
+
   const generatedTasks = await claudeClient.generateTasks(
     spec.title,
     spec.description || 'No description provided',
     spec.requirements,
-    spec.design
+    spec.design,
+    project?.architecture,
+    relatedSpecs.map(s => ({ 
+      id: s._id.toString(), 
+      name: s.name, 
+      status: s.status 
+    }))
   );
 
   console.log(`Generated ${generatedTasks.length} tasks`);
@@ -100,8 +114,8 @@ export const POST = withErrorHandling(async (
   await spec.save();
 
   // Write tasks to file system
-  const project = await Project.findById(spec.projectId);
-  if (project && project.workspacePath) {
+  const fullProject = await Project.findById(spec.projectId);
+  if (fullProject && fullProject.workspacePath) {
     try {
       const specId = spec.specNumber.toString().padStart(3, '0');
       // Convert task documents to plain objects for writeTasks
@@ -112,14 +126,14 @@ export const POST = withErrorHandling(async (
           totalEstimatedHours: createdTasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0),
         },
       };
-      await writeTasks(project.workspacePath, specId, taskData);
+      await writeTasks(fullProject.workspacePath, specId, taskData);
 
       loggers.spec.info(
-        { projectId: project._id, specId, workspacePath: project.workspacePath },
+        { projectId: fullProject._id, specId, workspacePath: fullProject.workspacePath },
         'Wrote tasks to workspace file'
       );
     } catch (error) {
-      loggers.spec.error({ error, projectId: project._id }, 'Failed to write tasks to file');
+      loggers.spec.error({ error, projectId: fullProject._id }, 'Failed to write tasks to file');
       // Don't fail the request, but log the error
     }
   }

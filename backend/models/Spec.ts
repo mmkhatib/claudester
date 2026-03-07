@@ -22,13 +22,17 @@ export enum Phase {
 
 export interface ISpec extends Document {
   specNumber: number;
-  name: string;
+  title: string;
   description: string;
   priority: Priority;
   status: SpecStatus;
   currentPhase: Phase;
   projectId: mongoose.Types.ObjectId;
 
+  // NOTE: Spec content is now stored in .claudester/specs/ files (file-based specs)
+  // MongoDB only stores metadata for indexing, tracking, and search
+  // Use workspaceManager.loadSpecContext() to read spec content from files
+  // These fields are deprecated and kept only for backward compatibility
   requirements?: any;
   design?: any;
   tasksDoc?: any;
@@ -54,7 +58,7 @@ const SpecSchema = new Schema<ISpec>({
     type: Number,
     required: true
   },
-  name: {
+  title: {
     type: String,
     required: true
   },

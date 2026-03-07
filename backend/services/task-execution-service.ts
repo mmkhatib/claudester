@@ -166,7 +166,7 @@ export class TaskExecutionService {
         architecture: project.architecture,
       },
       spec: {
-        name: spec.name || spec.title,
+        name: spec.title,
         description: spec.description,
         requirements: spec.requirements,
         design: spec.design,
@@ -229,7 +229,7 @@ Tech Stack:`;
     }
 
     prompt += `\n\n## FEATURE SPECIFICATION
-Feature: ${spec.name}
+Feature: ${spec.title}
 Description: ${spec.description}
 Priority: ${spec.priority}
 
@@ -263,14 +263,24 @@ ${task.dependencies.map((d: any) => `- ${d.title} (Status: ${d.status})`).join('
     }
 
     prompt += `\n\n## INSTRUCTIONS
-1. Implement this task following the project's architecture and conventions
-2. Save all files to the workspace path: ${project.workspacePath}
-3. Ensure the code integrates properly with existing components
-4. Follow the acceptance criteria exactly
-5. Write clean, well-documented code
-6. Include error handling where appropriate
 
-Please implement this task now.`;
+IMPORTANT: Before creating files, check what already exists:
+1. Use list_directory tool to see existing files in the workspace: ${project.workspacePath}
+2. Use read_file tool to read any existing files you need to understand or modify
+3. If a file already exists, read it first then edit/update it appropriately
+4. If a file doesn't exist, create it from scratch using write_file tool
+
+Implementation Steps:
+1. First explore the workspace to understand existing code structure
+2. Read any files that need to be modified
+3. Implement this task following the project's architecture and conventions
+4. Write all files to the workspace path: ${project.workspacePath}
+5. Ensure the code integrates properly with existing components
+6. Follow the acceptance criteria exactly
+7. Write clean, well-documented code
+8. Include error handling where appropriate
+
+Please implement this task now using the file operation tools (list_directory, read_file, write_file).`;
 
     return prompt;
   }
@@ -290,8 +300,23 @@ Please implement this task now.`;
     try {
       console.log(`[TaskExecution] Executing task (attempt ${currentRetry + 1}/${maxRetries + 1})`);
 
-      // Execute using Claude Code CLI
-      const result = await claudeClient.generateCode(task.description, prompt);
+      // Execute using AI provider (with file creation tools) and real-time progress updates
+      const result = await claudeClient.generateCode(
+        task.description,
+        prompt,
+        context.project.workspacePath,
+        (progress) => {
+          // Log progress in real-time
+          if (progress.type === 'stdout') {
+            console.log('[TaskExecution] Progress:', progress.content.trim());
+          } else if (progress.type === 'stderr') {
+            console.warn('[TaskExecution] stderr:', progress.content.trim());
+          }
+
+          // TODO: Send progress to UI via WebSocket or similar mechanism
+          // This will be implemented in the next step to update the Agent tab
+        }
+      );
 
       console.log(`[TaskExecution] Task completed successfully`);
 
@@ -320,12 +345,9 @@ Please implement this task now.`;
         return this.executeTaskWithRetry(task, agent, context, currentRetry + 1, maxRetries);
       }
 
-      // All retries exhausted
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        attempts: currentRetry + 1,
-      };
+      // All retries exhausted - throw the error so it's properly handled by startTask
+      console.error(`[TaskExecution] All ${maxRetries + 1} retry attempts exhausted`);
+      throw error;
     }
   }
 

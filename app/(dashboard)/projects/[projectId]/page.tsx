@@ -21,7 +21,7 @@ interface PageProps {
 }
 
 async function getProject(projectId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
 
   try {
     const res = await fetch(`${baseUrl}/api/projects/${projectId}`, { cache: 'no-store' });
@@ -36,7 +36,7 @@ async function getProject(projectId: string) {
 }
 
 async function getProjectSpecs(projectId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
 
   try {
     const res = await fetch(`${baseUrl}/api/specs?projectId=${projectId}`, { cache: 'no-store' });
@@ -52,7 +52,7 @@ async function getProjectSpecs(projectId: string) {
 }
 
 async function getProjectTasks(projectId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
 
   try {
     const res = await fetch(`${baseUrl}/api/tasks?projectId=${projectId}`, { cache: 'no-store' });

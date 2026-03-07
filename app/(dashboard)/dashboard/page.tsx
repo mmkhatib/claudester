@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 async function getStats() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
 
   try {
     const [projectsJson, specsJson, tasksJson, agentsJson] = await Promise.all([
@@ -65,7 +65,7 @@ export default async function DashboardPage() {
   const stats = await getStats();
 
   // Fetch real recent specs (active ones)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
   let activeSpecs: any[] = [];
 
   try {

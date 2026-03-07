@@ -69,7 +69,12 @@ export interface AIProvider {
   /**
    * Generate code based on a task description
    */
-  generateCode(taskDescription: string, context?: string): Promise<string>;
+  generateCode(
+    taskDescription: string,
+    context?: string,
+    workspacePath?: string,
+    onProgress?: (data: { type: 'stdout' | 'stderr'; content: string }) => void
+  ): Promise<string>;
 
   /**
    * Review code and provide suggestions

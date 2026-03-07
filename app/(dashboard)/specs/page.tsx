@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 
 async function getSpecs() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
   try {
+    // Use environment variable for server-side fetch
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
     const res = await fetch(`${baseUrl}/api/specs`, { cache: 'no-store' });
     if (!res.ok) return [];
     const json = await res.json();
@@ -30,9 +30,9 @@ async function getSpecs() {
 async function getProject(projectId: string) {
   if (!projectId) return null;
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
   try {
+    // Use environment variable for server-side fetch
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
     const res = await fetch(`${baseUrl}/api/projects/${projectId}`, { cache: 'no-store' });
     if (!res.ok) return null;
     const json = await res.json();
@@ -165,7 +165,7 @@ export default async function SpecsPage() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <FileText className="h-5 w-5 text-zinc-400" />
-                        <h3 className="text-lg font-semibold">{spec.name || spec.title}</h3>
+                        <h3 className="text-lg font-semibold">{spec.title}</h3>
                       </div>
                       <p className="text-zinc-600 dark:text-zinc-400 mb-3">
                         {spec.description || 'No description provided'}

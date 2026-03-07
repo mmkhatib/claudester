@@ -7,7 +7,7 @@ interface PageProps {
 }
 
 async function getSpec(specId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
 
   try {
     const res = await fetch(`${baseUrl}/api/specs/${specId}`, { cache: 'no-store' });

@@ -29,7 +29,7 @@ export const POST = withErrorHandling(async (
 
   const { specId } = context.params;
 
-  const spec = await Spec.findById(specId).populate('projectId', 'name description');
+  const spec = await Spec.findById(specId).populate('projectId', 'name description architecture');
 
   if (!spec) {
     return notFoundError('Specification');
@@ -41,15 +41,31 @@ export const POST = withErrorHandling(async (
 
   console.log('Generating design for spec:', spec.title);
 
-  const projectContext = spec.projectId
-    ? `Project: ${spec.projectId.name}\n${spec.projectId.description || ''}`
+  const project = spec.projectId as any;
+  const projectContext = project
+    ? `Project: ${project.name}\n${project.description || ''}`
     : undefined;
+
+  // Get related P0 specs with their designs
+  const relatedSpecs = await Spec.find({
+    projectId: spec.projectId,
+    priority: 'P0',
+    _id: { $ne: spec._id },
+    design: { $exists: true }
+  }).select('name description design').limit(5);
 
   const design = await claudeClient.generateDesign(
     spec.title,
     spec.description || 'No description provided',
     spec.requirements,
-    projectContext
+    projectContext,
+    project?.architecture,
+    relatedSpecs.map(s => ({ 
+      id: s._id.toString(), 
+      name: s.name, 
+      description: s.description,
+      design: s.design 
+    }))
   );
 
   spec.design = design;
@@ -58,18 +74,18 @@ export const POST = withErrorHandling(async (
   await spec.save();
 
   // Write design to file system
-  const project = await Project.findById(spec.projectId);
-  if (project && project.workspacePath) {
+  const fullProject = await Project.findById(spec.projectId);
+  if (fullProject && fullProject.workspacePath) {
     try {
       const specId = spec.specNumber.toString().padStart(3, '0');
-      await writeDesign(project.workspacePath, specId, design);
+      await writeDesign(fullProject.workspacePath, specId, design);
 
       loggers.spec.info(
-        { projectId: project._id, specId, workspacePath: project.workspacePath },
+        { projectId: fullProject._id, specId, workspacePath: fullProject.workspacePath },
         'Wrote design to workspace file'
       );
     } catch (error) {
-      loggers.spec.error({ error, projectId: project._id }, 'Failed to write design to file');
+      loggers.spec.error({ error, projectId: fullProject._id }, 'Failed to write design to file');
       // Don't fail the request, but log the error
     }
   }

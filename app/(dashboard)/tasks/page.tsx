@@ -15,7 +15,7 @@ import {
 
 async function getTasks() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/tasks`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500'}/api/tasks`, {
       cache: 'no-store',
     });
     if (!res.ok) return [];

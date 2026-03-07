@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -8,11 +8,10 @@ import {
   FileText,
   Clock,
   FolderKanban,
-  CheckSquare,
-  Plus,
 } from 'lucide-react';
 import { SpecActions } from './spec-actions';
-import { TaskList } from './task-list';
+import { SpecSections } from './spec-sections';
+import { getBaseUrl } from '@/lib/config';
 
 interface PageProps {
   params: {
@@ -21,9 +20,8 @@ interface PageProps {
 }
 
 async function getSpec(specId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
   try {
+    const baseUrl = getBaseUrl();
     const res = await fetch(`${baseUrl}/api/specs/${specId}`, { cache: 'no-store' });
     if (!res.ok) return null;
     const json = await res.json();
@@ -35,9 +33,8 @@ async function getSpec(specId: string) {
 }
 
 async function getTasks(specId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
   try {
+    const baseUrl = getBaseUrl();
     const res = await fetch(`${baseUrl}/api/tasks?specId=${specId}`, { cache: 'no-store' });
     if (!res.ok) return [];
     const json = await res.json();
@@ -119,7 +116,7 @@ export default async function SpecDetailPage({ params }: PageProps) {
         <div className="flex-1">
           <div className="flex items-center space-x-3 mb-2">
             <FileText className="h-8 w-8 text-zinc-400" />
-            <h1 className="text-3xl font-bold">{spec.name || spec.title}</h1>
+            <h1 className="text-3xl font-bold">{spec.title}</h1>
           </div>
           <p className="text-zinc-600 dark:text-zinc-400 mt-2">
             {spec.description || 'No description provided'}
@@ -181,160 +178,8 @@ export default async function SpecDetailPage({ params }: PageProps) {
         </Card>
       )}
 
-      {/* Content sections */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* Requirements */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Requirements</CardTitle>
-            <CardDescription>
-              Functional and technical requirements
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {spec.requirements && Object.keys(spec.requirements).length > 0 ? (
-              <div className="space-y-6">
-                {Object.entries(spec.requirements).map(([key, value]: [string, any]) => {
-                  const items = Array.isArray(value) ? value : [value];
-                  return (
-                    <div key={key}>
-                      <h3 className="font-semibold text-lg mb-3 capitalize">
-                        {key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
-                      </h3>
-                      <ul className="space-y-2">
-                        {items.map((item: any, index: number) => (
-                          <li key={index} className="flex gap-3">
-                            <span className="text-blue-600 dark:text-blue-400 mt-1">•</span>
-                            <span className="text-sm text-zinc-700 dark:text-zinc-300 flex-1">
-                              {typeof item === 'string' ? item : JSON.stringify(item)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CheckSquare className="h-8 w-8 text-zinc-400 mx-auto mb-3" />
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  No requirements defined yet
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Design */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Design</CardTitle>
-            <CardDescription>
-              Technical architecture and design specifications
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {spec.design ? (
-              <div className="space-y-6">
-                {typeof spec.design === 'object' ? (
-                  <>
-                    {spec.design.architecture && (
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">Architecture</h3>
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
-                          {spec.design.architecture}
-                        </p>
-                      </div>
-                    )}
-
-                    {spec.design.dataModel && (
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">Data Model</h3>
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
-                          {spec.design.dataModel}
-                        </p>
-                      </div>
-                    )}
-
-                    {spec.design.apiEndpoints && spec.design.apiEndpoints.length > 0 && (
-                      <div>
-                        <h3 className="font-semibold text-lg mb-3">API Endpoints</h3>
-                        <ul className="space-y-2">
-                          {spec.design.apiEndpoints.map((endpoint: string, index: number) => (
-                            <li key={index} className="flex gap-3">
-                              <span className="text-green-600 dark:text-green-400 mt-1">→</span>
-                              <span className="text-sm font-mono text-zinc-700 dark:text-zinc-300">
-                                {endpoint}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {spec.design.uiComponents && spec.design.uiComponents.length > 0 && (
-                      <div>
-                        <h3 className="font-semibold text-lg mb-3">UI Components</h3>
-                        <ul className="space-y-2">
-                          {spec.design.uiComponents.map((component: string, index: number) => (
-                            <li key={index} className="flex gap-3">
-                              <span className="text-purple-600 dark:text-purple-400 mt-1">▪</span>
-                              <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                                {component}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
-                    {spec.design}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="h-8 w-8 text-zinc-400 mx-auto mb-3" />
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  No design specifications yet
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tasks */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Tasks</CardTitle>
-              <CardDescription>
-                Implementation tasks for this specification
-              </CardDescription>
-            </div>
-            {tasks.length > 0 && (
-              <Badge variant="secondary">{tasks.length} tasks</Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {tasks.length > 0 ? (
-            <TaskList tasks={tasks} specId={spec._id} />
-          ) : (
-            <div className="text-center py-8">
-              <CheckSquare className="h-8 w-8 text-zinc-400 mx-auto mb-3" />
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                No tasks created yet
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Content sections - collapsible with persisted state */}
+      <SpecSections spec={spec} tasks={tasks} />
 
       {/* Metadata */}
       <Card>

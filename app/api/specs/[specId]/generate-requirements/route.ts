@@ -28,7 +28,7 @@ export const POST = withErrorHandling(async (
 
   const { specId } = context.params;
 
-  const spec = await Spec.findById(specId).populate('projectId', 'name description');
+  const spec = await Spec.findById(specId).populate('projectId', 'name description architecture');
 
   if (!spec) {
     return notFoundError('Specification');
@@ -36,14 +36,24 @@ export const POST = withErrorHandling(async (
 
   console.log('Generating requirements for spec:', spec.title);
 
-  const projectContext = spec.projectId
-    ? `Project: ${spec.projectId.name}\n${spec.projectId.description || ''}`
+  const project = spec.projectId as any;
+  const projectContext = project
+    ? `Project: ${project.name}\n${project.description || ''}`
     : undefined;
+
+  // Get related P0 specs for integration context
+  const relatedSpecs = await Spec.find({
+    projectId: spec.projectId,
+    priority: 'P0',
+    _id: { $ne: spec._id }
+  }).select('name description').limit(5);
 
   const requirements = await claudeClient.generateRequirements(
     spec.title,
     spec.description || 'No description provided',
-    projectContext
+    projectContext,
+    project?.architecture,
+    relatedSpecs.map(s => ({ id: s._id.toString(), name: s.name, description: s.description }))
   );
 
   spec.requirements = requirements;
@@ -52,18 +62,18 @@ export const POST = withErrorHandling(async (
   await spec.save();
 
   // Write requirements to file system
-  const project = await Project.findById(spec.projectId);
-  if (project && project.workspacePath) {
+  const fullProject = await Project.findById(spec.projectId);
+  if (fullProject && fullProject.workspacePath) {
     try {
       const specId = spec.specNumber.toString().padStart(3, '0');
-      await writeRequirements(project.workspacePath, specId, requirements);
+      await writeRequirements(fullProject.workspacePath, specId, requirements);
 
       loggers.spec.info(
-        { projectId: project._id, specId, workspacePath: project.workspacePath },
+        { projectId: fullProject._id, specId, workspacePath: fullProject.workspacePath },
         'Wrote requirements to workspace file'
       );
     } catch (error) {
-      loggers.spec.error({ error, projectId: project._id }, 'Failed to write requirements to file');
+      loggers.spec.error({ error, projectId: fullProject._id }, 'Failed to write requirements to file');
       // Don't fail the request, but log the error
     }
   }

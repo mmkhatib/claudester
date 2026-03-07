@@ -2,8 +2,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getEnv } from '@/lib/env';
 import { loggers } from '@/lib/logger';
 import { AIProvider } from './ai-providers/base-provider';
-import { ClaudeCodeCLIProvider } from './ai-providers/claude-code-cli-provider';
 import { AnthropicAPIProvider } from './ai-providers/anthropic-api-provider';
+import { ClaudeCodeCLIProvider } from './ai-providers/claude-code-cli-provider';
 
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
@@ -36,26 +36,29 @@ class ClaudeClient {
   constructor() {
     const env = getEnv();
 
-    // Initialize Anthropic client (for backwards compatibility with sendMessage)
-    this.client = new Anthropic({
-      apiKey: env.ANTHROPIC_API_KEY,
-    });
-
     // Initialize the AI provider based on environment variable
-    const aiProvider = process.env.AI_PROVIDER || 'claude-code-cli';
+    const aiProvider = env.AI_PROVIDER;
 
     switch (aiProvider) {
-      case 'claude-code-cli':
-        this.provider = new ClaudeCodeCLIProvider();
-        loggers.agent.info('Using Claude Code CLI provider');
-        break;
       case 'anthropic-api':
         this.provider = new AnthropicAPIProvider();
+        // Initialize Anthropic client for API provider
+        this.client = new Anthropic({
+          apiKey: env.ANTHROPIC_API_KEY || '',
+        });
         loggers.agent.info('Using Anthropic API provider');
         break;
+      case 'claude-code-cli':
+        this.provider = new ClaudeCodeCLIProvider();
+        // No need to initialize Anthropic client for CLI provider
+        this.client = null as any; // Set to null, not used by CLI provider
+        loggers.agent.info('Using Claude Code CLI provider');
+        break;
       default:
+        // Default to Claude Code CLI
         loggers.agent.warn({ provider: aiProvider }, 'Unknown AI provider, defaulting to Claude Code CLI');
         this.provider = new ClaudeCodeCLIProvider();
+        this.client = null as any;
     }
 
     loggers.agent.info({ provider: this.provider.getProviderInfo() }, 'Claude client initialized');
@@ -167,8 +170,13 @@ class ClaudeClient {
   /**
    * Generate code based on a task description
    */
-  async generateCode(taskDescription: string, context?: string): Promise<string> {
-    return this.provider.generateCode(taskDescription, context);
+  async generateCode(
+    taskDescription: string,
+    context?: string,
+    workspacePath?: string,
+    onProgress?: (data: { type: 'stdout' | 'stderr'; content: string }) => void
+  ): Promise<string> {
+    return this.provider.generateCode(taskDescription, context, workspacePath, onProgress);
   }
 
   /**
@@ -211,17 +219,29 @@ class ClaudeClient {
   }
 
   /**
+   * Generate project-wide architecture
+   */
+  async generateProjectArchitecture(
+    projectName: string,
+    projectDescription: string
+  ): Promise<any> {
+    return this.provider.generateProjectArchitecture(projectName, projectDescription);
+  }
+
+  /**
    * Generate specifications from a project description using extended thinking
    */
   async generateSpecifications(
     projectName: string,
-    projectDescription: string
+    projectDescription: string,
+    architecture?: any,
+    existingSpecs?: Array<{ name: string; description: string }>
   ): Promise<Array<{
     title: string;
     description: string;
     priority: 'P0' | 'P1' | 'P2';
   }>> {
-    return this.provider.generateSpecifications(projectName, projectDescription);
+    return this.provider.generateSpecifications(projectName, projectDescription, architecture, existingSpecs);
   }
 
   /**
@@ -230,9 +250,11 @@ class ClaudeClient {
   async generateRequirements(
     specName: string,
     specDescription: string,
-    projectContext?: string
+    projectContext?: string,
+    architecture?: any,
+    relatedSpecs?: Array<{ id: string; name: string; description: string }>
   ) {
-    return this.provider.generateRequirements(specName, specDescription, projectContext);
+    return this.provider.generateRequirements(specName, specDescription, projectContext, architecture, relatedSpecs);
   }
 
   /**
@@ -242,9 +264,11 @@ class ClaudeClient {
     specName: string,
     specDescription: string,
     requirements: any,
-    projectContext?: string
+    projectContext?: string,
+    architecture?: any,
+    relatedSpecs?: Array<{ id: string; name: string; description: string; design?: any }>
   ) {
-    return this.provider.generateDesign(specName, specDescription, requirements, projectContext);
+    return this.provider.generateDesign(specName, specDescription, requirements, projectContext, architecture, relatedSpecs);
   }
 
   /**
@@ -254,9 +278,11 @@ class ClaudeClient {
     specName: string,
     specDescription: string,
     requirements: any,
-    design: any
+    design: any,
+    architecture?: any,
+    relatedSpecs?: Array<{ id: string; name: string; status: string }>
   ) {
-    return this.provider.generateTasks(specName, specDescription, requirements, design);
+    return this.provider.generateTasks(specName, specDescription, requirements, design, architecture, relatedSpecs);
   }
 
   /**
