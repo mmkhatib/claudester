@@ -25,8 +25,8 @@ async function getStats() {
 
     // Unwrap the data from the standard API response
     const projects = Array.isArray(projectsJson.data) ? projectsJson.data : (Array.isArray(projectsJson) ? projectsJson : []);
-    const specs = Array.isArray(specsJson.data) ? specsJson.data : (Array.isArray(specsJson) ? specsJson : []);
-    const tasks = Array.isArray(tasksJson.data) ? tasksJson.data : (Array.isArray(tasksJson) ? tasksJson : []);
+    const specs = specsJson.data?.specs || specsJson.specs || (Array.isArray(specsJson.data) ? specsJson.data : []);
+    const tasks = tasksJson.data?.tasks || tasksJson.tasks || (Array.isArray(tasksJson.data) ? tasksJson.data : []);
     const agents = Array.isArray(agentsJson.data) ? agentsJson.data : (Array.isArray(agentsJson) ? agentsJson : []);
 
     return {
