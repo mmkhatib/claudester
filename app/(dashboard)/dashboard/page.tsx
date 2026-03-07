@@ -220,7 +220,7 @@ export default async function DashboardPage() {
                           <h3 className="font-medium">{spec.name || spec.title}</h3>
                           {spec.projectId && (
                             <p className="text-sm text-zinc-500 mt-1">
-                              Project ID: {spec.projectId}
+                              {typeof spec.projectId === 'object' ? spec.projectId.name : spec.projectId}
                             </p>
                           )}
                         </div>
