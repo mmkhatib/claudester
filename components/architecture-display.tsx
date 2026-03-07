@@ -72,45 +72,57 @@ export function ArchitectureDisplay({ architecture, projectId }: ArchitectureDis
           </CardTitle>
         </CardHeader>
         {expandedSections.techStack && (
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {architecture.techStack.frontend && architecture.techStack.frontend.length > 0 && (
               <div>
-                <div className="text-sm font-medium mb-2">Frontend</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Frontend</div>
+                <ul className="space-y-1">
                   {architecture.techStack.frontend.map((tech, i) => (
-                    <Badge key={i} variant="secondary">{tech}</Badge>
+                    <li key={i} className="text-sm text-zinc-600 dark:text-zinc-400 flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">▸</span>
+                      <span>{tech}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
             {architecture.techStack.backend && architecture.techStack.backend.length > 0 && (
               <div>
-                <div className="text-sm font-medium mb-2">Backend</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Backend</div>
+                <ul className="space-y-1">
                   {architecture.techStack.backend.map((tech, i) => (
-                    <Badge key={i} variant="secondary">{tech}</Badge>
+                    <li key={i} className="text-sm text-zinc-600 dark:text-zinc-400 flex items-start gap-2">
+                      <span className="text-green-500 mt-1">▸</span>
+                      <span>{tech}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
             {architecture.techStack.database && architecture.techStack.database.length > 0 && (
               <div>
-                <div className="text-sm font-medium mb-2">Database</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Database</div>
+                <ul className="space-y-1">
                   {architecture.techStack.database.map((tech, i) => (
-                    <Badge key={i} variant="secondary">{tech}</Badge>
+                    <li key={i} className="text-sm text-zinc-600 dark:text-zinc-400 flex items-start gap-2">
+                      <span className="text-purple-500 mt-1">▸</span>
+                      <span>{tech}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
             {architecture.techStack.deployment && architecture.techStack.deployment.length > 0 && (
               <div>
-                <div className="text-sm font-medium mb-2">Deployment</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Deployment</div>
+                <ul className="space-y-1">
                   {architecture.techStack.deployment.map((tech, i) => (
-                    <Badge key={i} variant="secondary">{tech}</Badge>
+                    <li key={i} className="text-sm text-zinc-600 dark:text-zinc-400 flex items-start gap-2">
+                      <span className="text-orange-500 mt-1">▸</span>
+                      <span>{tech}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
           </CardContent>
