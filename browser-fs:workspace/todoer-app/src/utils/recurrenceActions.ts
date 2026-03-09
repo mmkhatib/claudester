@@ -116,26 +116,6 @@ export function generateNextInstance(completedTask: Task): Task {
   };
 }
 
-/**
- * Completion hook for recurring tasks.
- *
- * When called:
- *  1. Computes the next due date via the recurrence engine.
- *  2. Builds the next task instance (new UUID, same series metadata).
- *  3. Atomically marks the completed task as done AND inserts the next instance
- *     in a **single** localStorage write, preventing any transient intermediate
- *     state from being visible or persisted.
- *
- * This function is intentionally synchronous and completes within a single event
- * loop tick to avoid UI flicker.
- *
- * If `task.isRecurring` is false this function is a no-op — call the regular
- * task-completion path instead.
- *
- * @param task - The recurring task being marked complete.
- * @returns An object with the persisted `completed` task and `next` instance,
- *   or `null` if the task is not recurring (no-op case).
- */
 // ── Edit / remove actions ────────────────────────────────────────────────────
 
 /**
