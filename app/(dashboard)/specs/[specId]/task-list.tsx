@@ -75,6 +75,7 @@ export function TaskList({ tasks, specId }: TaskListProps) {
   };
 
   const handleStartTask = async (taskId: string) => {
+    console.log('[TaskList] Starting task:', taskId);
     try {
       setStartingTaskId(taskId);
       setCurrentTaskId(taskId);
@@ -83,19 +84,24 @@ export function TaskList({ tasks, specId }: TaskListProps) {
 
       // Join task room
       if (socket) {
+        console.log('[TaskList] Joining task room:', taskId);
         socket.emit('join:task', taskId);
         socket.on('task:output', (data: { taskId: string; output: string }) => {
+          console.log('[TaskList] Received task output:', data);
           if (data.taskId === taskId) {
             setTaskOutput(prev => prev + data.output);
           }
         });
       }
 
+      console.log('[TaskList] Calling API to start task');
       const response = await fetch(`/api/tasks/${taskId}/start`, {
         method: 'POST',
       });
 
+      console.log('[TaskList] API response status:', response.status);
       const result = await response.json();
+      console.log('[TaskList] API result:', result);
 
       if (!result.success) {
         setTaskOutput(prev => prev + `\n[ERROR] ${result.error}`);
@@ -113,7 +119,7 @@ export function TaskList({ tasks, specId }: TaskListProps) {
       setTaskOutput(prev => prev + `\nTask started! Agent ID: ${result.data.agent?.agentId || 'N/A'}\n`);
       setTimeout(() => router.refresh(), 1500);
     } catch (error) {
-      console.error('Error starting task:', error);
+      console.error('[TaskList] Error starting task:', error);
       setTaskOutput(prev => prev + `\n[ERROR] ${error}`);
       setTimeout(() => {
         setShowProgressModal(false);
