@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Clock, CheckCircle2, XCircle, Loader2, FileCode } from 'lucide-react';
 import Link from 'next/link';
 import { TaskActions } from './task-actions';
+import { TaskOutput } from './task-output';
 
 interface PageProps {
   params: {
@@ -227,31 +228,16 @@ export default async function TaskDetailPage({ params }: PageProps) {
                 </pre>
               </div>
             )}
-
-            {agent.output && agent.output.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                  <FileCode className="h-4 w-4" />
-                  Agent Output
-                </h4>
-                <div className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 max-h-[500px] overflow-auto">
-                  <pre className="text-sm whitespace-pre-wrap">
-                    {agent.output}
-                  </pre>
-                </div>
-              </div>
-            )}
-
-            {!agent.output && !agent.error && agent.status === 'RUNNING' && (
-              <div className="text-center py-8 text-zinc-500">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p>Agent is running... No output yet.</p>
-                <p className="text-sm mt-2">Refresh the page to see updates.</p>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
+
+      {/* Task Output - Live Streaming */}
+      <TaskOutput 
+        taskId={params.taskId} 
+        initialOutput={agent?.output || task.result?.output}
+        status={task.status}
+      />
 
       {/* Generated Files */}
       {agent && agent.workspacePath && (
@@ -259,17 +245,14 @@ export default async function TaskDetailPage({ params }: PageProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileCode className="h-5 w-5" />
-              Generated Code
+              Workspace
             </CardTitle>
             <CardDescription>
-              Files should be written to: {agent.workspacePath}
+              Files are written to this directory
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Check the workspace directory for generated code files.
-            </p>
-            <div className="mt-4 p-3 rounded bg-zinc-100 dark:bg-zinc-900 font-mono text-sm">
+            <div className="p-3 rounded bg-zinc-100 dark:bg-zinc-900 font-mono text-sm">
               {agent.workspacePath}
             </div>
           </CardContent>

@@ -205,12 +205,30 @@ class AgentSpawner {
   ): void {
     // Handle stdout
     process.stdout?.on('data', (data) => {
-      loggers.agent.debug({ agentId, output: data.toString() }, 'Agent stdout');
+      const output = data.toString();
+      loggers.agent.debug({ agentId, output }, 'Agent stdout');
+      
+      // Emit to WebSocket
+      if (global.io) {
+        global.io.to(`task:${taskId}`).emit('task:output', {
+          taskId,
+          output,
+        });
+      }
     });
 
     // Handle stderr
     process.stderr?.on('data', (data) => {
-      loggers.agent.error({ agentId, error: data.toString() }, 'Agent stderr');
+      const error = data.toString();
+      loggers.agent.error({ agentId, error }, 'Agent stderr');
+      
+      // Emit errors to WebSocket too
+      if (global.io) {
+        global.io.to(`task:${taskId}`).emit('task:output', {
+          taskId,
+          output: `[ERROR] ${error}`,
+        });
+      }
     });
 
     // Handle process exit

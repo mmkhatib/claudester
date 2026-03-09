@@ -45,6 +45,11 @@ app.prepare().then(() => {
       console.log(`Socket ${socket.id} joined spec:${specId}`);
     });
 
+    socket.on('join:task', (taskId) => {
+      socket.join(`task:${taskId}`);
+      console.log(`Socket ${socket.id} joined task:${taskId}`);
+    });
+
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
     });
