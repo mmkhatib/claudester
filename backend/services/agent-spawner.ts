@@ -6,6 +6,7 @@ import { Agent, Task, AgentType, AgentStatus, TaskStatus } from '@/backend/model
 import { loggers } from '@/lib/logger';
 import { getEnv } from '@/lib/env';
 import type { Types } from 'mongoose';
+import { getGitChanges } from '@/backend/utils/git-changes';
 
 export interface AgentConfig {
   taskId: string;
@@ -22,6 +23,7 @@ export interface SpawnedAgent {
   taskId: string;
   workspacePath: string;
   startTime: Date;
+  fileWatcher?: NodeJS.Timeout;
 }
 
 class AgentSpawner {
@@ -169,6 +171,9 @@ class AgentSpawner {
       // Set up process event handlers
       this.setupProcessHandlers(agentId, agentProcess, config.taskId);
 
+      // Start file change watcher
+      this.startFileWatcher(agentId, config.taskId, workspacePath, spawnedAgent);
+
       // Set timeout
       setTimeout(() => {
         this.handleTimeout(agentId);
@@ -291,6 +296,12 @@ class AgentSpawner {
       await task.save();
     }
 
+    // Clear file watcher
+    const spawnedAgent = this.activeAgents.get(agentId);
+    if (spawnedAgent?.fileWatcher) {
+      clearInterval(spawnedAgent.fileWatcher);
+    }
+
     // Remove from active agents
     this.activeAgents.delete(agentId);
 
@@ -312,6 +323,11 @@ class AgentSpawner {
 
     const agent = this.activeAgents.get(agentId);
     if (agent) {
+      // Clear file watcher
+      if (agent.fileWatcher) {
+        clearInterval(agent.fileWatcher);
+      }
+
       const task = await Task.findById(agent.taskId);
       if (task) {
         task.status = TaskStatus.FAILED;
@@ -395,6 +411,32 @@ class AgentSpawner {
       agentDoc.status = AgentStatus.FAILED;
       await agentDoc.save();
     }
+  }
+
+  /**
+   * Start watching for file changes
+   */
+  private startFileWatcher(
+    agentId: string,
+    taskId: string,
+    workspacePath: string,
+    spawnedAgent: SpawnedAgent
+  ): void {
+    const watcher = setInterval(async () => {
+      try {
+        const changes = await getGitChanges(workspacePath);
+        if (changes.length > 0 && global.io) {
+          global.io.to(`task:${taskId}`).emit('task:file-change', {
+            taskId,
+            changes,
+          });
+        }
+      } catch (error) {
+        loggers.agent.error({ agentId, error }, 'Error watching file changes');
+      }
+    }, 2000); // Check every 2 seconds
+
+    spawnedAgent.fileWatcher = watcher;
   }
 
   /**

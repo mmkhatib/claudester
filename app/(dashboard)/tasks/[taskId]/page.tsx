@@ -237,6 +237,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
         taskId={params.taskId} 
         initialOutput={agent?.output || task.result?.output}
         status={task.status}
+        workspacePath={agent?.workspacePath}
       />
 
       {/* Generated Files */}
