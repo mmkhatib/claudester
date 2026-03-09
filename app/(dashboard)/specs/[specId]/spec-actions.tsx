@@ -415,26 +415,6 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
         Edit
       </Button>
 
-      {hasRequirements && (
-        <Button 
-          variant="outline"
-          onClick={handleViewRequirements}
-        >
-          <Wand2 className="h-4 w-4 mr-2" />
-          View Requirements
-        </Button>
-      )}
-
-      {hasDesign && (
-        <Button 
-          variant="outline"
-          onClick={handleViewDesign}
-        >
-          <Wand2 className="h-4 w-4 mr-2" />
-          View Design
-        </Button>
-      )}
-
       <Button 
         variant="outline"
         onClick={() => setShowResetModal(true)}
@@ -590,6 +570,16 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
       progress={streamingText ? [streamingText] : progress}
       onDismiss={() => setShowProgressModal(false)}
     />
+
+    {/* Show reopen button when generating but modal is dismissed */}
+    {(isGenerating || isGeneratingTasks) && !showProgressModal && (
+      <div className="fixed bottom-4 right-4 z-50">
+        <Button onClick={() => setShowProgressModal(true)} size="lg">
+          <Wand2 className="h-4 w-4 mr-2" />
+          View Progress
+        </Button>
+      </div>
+    )}
 
     {/* View Output Modal */}
     <ProgressModal
