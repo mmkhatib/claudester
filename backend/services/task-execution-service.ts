@@ -309,12 +309,25 @@ Please implement this task now using the file operation tools (list_directory, r
           // Log progress in real-time
           if (progress.type === 'stdout') {
             console.log('[TaskExecution] Progress:', progress.content.trim());
+            
+            // Emit to WebSocket
+            if (global.io) {
+              global.io.to(`task:${taskId}`).emit('task:output', {
+                taskId,
+                output: progress.content,
+              });
+            }
           } else if (progress.type === 'stderr') {
             console.warn('[TaskExecution] stderr:', progress.content.trim());
+            
+            // Emit errors to WebSocket
+            if (global.io) {
+              global.io.to(`task:${taskId}`).emit('task:output', {
+                taskId,
+                output: `[ERROR] ${progress.content}`,
+              });
+            }
           }
-
-          // TODO: Send progress to UI via WebSocket or similar mechanism
-          // This will be implemented in the next step to update the Agent tab
         }
       );
 
