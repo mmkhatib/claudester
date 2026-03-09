@@ -46,6 +46,8 @@ exports.loggers = {
     agent: createLogger('agent'),
     auth: createLogger('auth'),
     websocket: createLogger('websocket'),
+    spec: createLogger('spec'),
+    server: createLogger('server'),
 };
 /**
  * Log request/response for API routes

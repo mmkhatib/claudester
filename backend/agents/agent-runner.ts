@@ -176,22 +176,92 @@ class AgentRunner {
   private async executeDevelopment(task: any): Promise<void> {
     this.log('info', 'Executing development task');
 
-    // TODO: Implement development task execution
-    // This will integrate with Claude Code API to:
-    // 1. Analyze task requirements
-    // 2. Generate code
-    // 3. Write files
-    // 4. Run tests
-    // 5. Verify acceptance criteria
+    const prompt = `You are a software development agent. Implement the following task:
+
+Title: ${task.title}
+Description: ${task.description}
+
+${task.acceptanceCriteria?.length > 0 ? `Acceptance Criteria:
+${task.acceptanceCriteria.map((c: string) => `- ${c}`).join('\n')}` : ''}
+
+${task.files?.length > 0 ? `Files to modify:
+${task.files.join('\n')}` : ''}
+
+Please:
+1. Write the necessary code
+2. Follow best practices
+3. Add comments where needed
+4. Ensure all acceptance criteria are met
+
+Output your progress and what you're doing as you work.`;
 
     this.sendMessage('progress', {
       status: 'in_progress',
-      progress: 50,
-      message: 'Development task execution not yet implemented',
+      progress: 10,
+      message: 'Starting code generation...',
     });
 
-    // Placeholder - simulate work
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Use Claude CLI with streaming
+    const { spawn } = require('child_process');
+    const claudePath = '/Users/overlord/.local/bin/claude';
+    
+    const claudeProcess = spawn(claudePath, [
+      '-p', prompt,
+      '--output-format', 'stream-json',
+      '--verbose',
+      '--include-partial-messages'
+    ], {
+      cwd: this.context.workspacePath,
+    });
+
+    let buffer = '';
+    
+    claudeProcess.stdout.on('data', (data: Buffer) => {
+      const chunk = data.toString();
+      process.stdout.write(chunk); // This gets captured by agent-spawner
+      
+      buffer += chunk;
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        
+        try {
+          const event = JSON.parse(line);
+          if (event.stream_event?.delta?.text_delta) {
+            const text = event.stream_event.delta.text_delta;
+            process.stdout.write(text);
+          }
+        } catch (e) {
+          // Not JSON, just output it
+          process.stdout.write(line + '\n');
+        }
+      }
+    });
+
+    claudeProcess.stderr.on('data', (data: Buffer) => {
+      process.stderr.write(data);
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      claudeProcess.on('close', (code: number) => {
+        if (code === 0) {
+          this.sendMessage('progress', {
+            status: 'completed',
+            progress: 100,
+            message: 'Task completed successfully',
+          });
+          resolve();
+        } else {
+          reject(new Error(`Claude process exited with code ${code}`));
+        }
+      });
+
+      claudeProcess.on('error', (error: Error) => {
+        reject(error);
+      });
+    });
   }
 
   /**
