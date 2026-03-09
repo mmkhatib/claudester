@@ -39,6 +39,9 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showViewOutputModal, setShowViewOutputModal] = useState(false);
+  const [viewOutputContent, setViewOutputContent] = useState<string>('');
+  const [viewOutputTitle, setViewOutputTitle] = useState<string>('');
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [resetSections, setResetSections] = useState({
@@ -252,8 +255,48 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
     }
   };
 
+  const handleViewOutput = async () => {
+    try {
+      const res = await fetch(`/api/specs/${specId}`);
+      const data = await res.json();
+      
+      if (data.success && data.data) {
+        const spec = data.data;
+        let content = '';
+        
+        if (spec.requirements) {
+          content += '# Requirements\n\n';
+          content += `## Functional Requirements\n${spec.requirements.functional?.map((r: string) => `- ${r}`).join('\n') || 'None'}\n\n`;
+          content += `## Technical Requirements\n${spec.requirements.technical?.map((r: string) => `- ${r}`).join('\n') || 'None'}\n\n`;
+          content += `## Constraints\n${spec.requirements.constraints?.map((r: string) => `- ${r}`).join('\n') || 'None'}\n\n`;
+          content += `## Acceptance Criteria\n${spec.requirements.acceptanceCriteria?.map((r: string) => `- ${r}`).join('\n') || 'None'}\n\n`;
+        }
+        
+        if (spec.design) {
+          content += '# Design\n\n';
+          content += `## Architecture\n${spec.design.architecture || 'Not specified'}\n\n`;
+          content += `## Data Model\n${spec.design.dataModel || 'Not specified'}\n\n`;
+          content += `## API Endpoints\n${spec.design.apiEndpoints?.map((e: string) => `- ${e}`).join('\n') || 'None'}\n\n`;
+          content += `## UI Components\n${spec.design.uiComponents?.map((c: string) => `- ${c}`).join('\n') || 'None'}\n\n`;
+        }
+        
+        setViewOutputContent(content);
+        setViewOutputTitle(`Generated Output: ${specName}`);
+        setShowViewOutputModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching spec output:', error);
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: 'Failed to load generated output',
+      });
+    }
+  };
+
   const showGenerateRequirements = !hasRequirements || !hasDesign;
   const showGenerateTasks = hasRequirements && hasDesign && currentPhase !== 'COMPLETED';
+  const showViewOutput = hasRequirements || hasDesign;
 
   const handleReset = async () => {
     const sectionsToReset = Object.entries(resetSections)
@@ -327,6 +370,16 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
         <Edit className="h-4 w-4 mr-2" />
         Edit
       </Button>
+
+      {showViewOutput && (
+        <Button 
+          variant="outline"
+          onClick={handleViewOutput}
+        >
+          <Wand2 className="h-4 w-4 mr-2" />
+          View Output
+        </Button>
+      )}
 
       <Button 
         variant="outline"
@@ -482,6 +535,15 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
       description="AI is analyzing and creating content... (You can dismiss this and generation will continue in background)"
       progress={streamingText ? [streamingText] : progress}
       onDismiss={() => setShowProgressModal(false)}
+    />
+
+    {/* View Output Modal */}
+    <ProgressModal
+      open={showViewOutputModal}
+      title={viewOutputTitle}
+      description="Generated content from AI"
+      progress={[viewOutputContent]}
+      onDismiss={() => setShowViewOutputModal(false)}
     />
     </>
   );
