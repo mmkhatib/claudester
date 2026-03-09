@@ -52,7 +52,17 @@ export const POST = withErrorHandling(async (
     priority: 'P0',
     _id: { $ne: spec._id },
     design: { $exists: true }
-  }).select('name description design').limit(5);
+  }).select('title description design').limit(5);
+
+  const progressCallback = (text: string) => {
+    if (global.io) {
+      global.io.to(`spec:${specId}`).emit('ai:progress', {
+        type: 'design_generation',
+        text,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  };
 
   const design = await claudeClient.generateDesign(
     spec.title,
@@ -62,10 +72,11 @@ export const POST = withErrorHandling(async (
     project?.architecture,
     relatedSpecs.map(s => ({ 
       id: s._id.toString(), 
-      name: s.name, 
+      name: s.title, 
       description: s.description,
       design: s.design 
-    }))
+    })),
+    progressCallback
   );
 
   spec.design = design;
@@ -85,7 +96,8 @@ export const POST = withErrorHandling(async (
         'Wrote design to workspace file'
       );
     } catch (error) {
-      loggers.spec.error({ error, projectId: fullProject._id }, 'Failed to write design to file');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      loggers.spec.error({ errorMsg, projectId: fullProject._id }, 'Failed to write design to file');
       // Don't fail the request, but log the error
     }
   }

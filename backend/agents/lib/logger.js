@@ -20,19 +20,8 @@ const env_1 = require("./env");
  */
 exports.logger = (0, pino_1.default)({
     level: process.env.LOG_LEVEL || ((0, env_1.isDevelopment)() ? 'debug' : 'info'),
-    ...((0, env_1.isDevelopment)()
-        ? {
-            transport: {
-                target: 'pino-pretty',
-                options: {
-                    colorize: true,
-                    translateTime: 'HH:MM:ss',
-                    ignore: 'pid,hostname',
-                    singleLine: false,
-                },
-            },
-        }
-        : {}),
+    // Disabled pino-pretty transport due to worker thread issues in Next.js
+    // Using basic JSON logging instead
     formatters: {
         level: (label) => {
             return { level: label };

@@ -235,13 +235,14 @@ class ClaudeClient {
     projectName: string,
     projectDescription: string,
     architecture?: any,
-    existingSpecs?: Array<{ name: string; description: string }>
+    existingSpecs?: Array<{ name: string; description: string }>,
+    onProgress?: (text: string) => void
   ): Promise<Array<{
     title: string;
     description: string;
     priority: 'P0' | 'P1' | 'P2';
   }>> {
-    return this.provider.generateSpecifications(projectName, projectDescription, architecture, existingSpecs);
+    return this.provider.generateSpecifications(projectName, projectDescription, architecture, existingSpecs, onProgress);
   }
 
   /**
@@ -252,9 +253,10 @@ class ClaudeClient {
     specDescription: string,
     projectContext?: string,
     architecture?: any,
-    relatedSpecs?: Array<{ id: string; name: string; description: string }>
+    relatedSpecs?: Array<{ id: string; name: string; description: string }>,
+    onProgress?: (text: string) => void
   ) {
-    return this.provider.generateRequirements(specName, specDescription, projectContext, architecture, relatedSpecs);
+    return this.provider.generateRequirements(specName, specDescription, projectContext, architecture, relatedSpecs, onProgress);
   }
 
   /**
@@ -266,9 +268,10 @@ class ClaudeClient {
     requirements: any,
     projectContext?: string,
     architecture?: any,
-    relatedSpecs?: Array<{ id: string; name: string; description: string; design?: any }>
+    relatedSpecs?: Array<{ id: string; name: string; description: string; design?: any }>,
+    onProgress?: (text: string) => void
   ) {
-    return this.provider.generateDesign(specName, specDescription, requirements, projectContext, architecture, relatedSpecs);
+    return this.provider.generateDesign(specName, specDescription, requirements, projectContext, architecture, relatedSpecs, onProgress);
   }
 
   /**
@@ -280,9 +283,10 @@ class ClaudeClient {
     requirements: any,
     design: any,
     architecture?: any,
-    relatedSpecs?: Array<{ id: string; name: string; status: string }>
+    relatedSpecs?: Array<{ id: string; name: string; status: string }>,
+    onProgress?: (text: string) => void
   ) {
-    return this.provider.generateTasks(specName, specDescription, requirements, design, architecture, relatedSpecs);
+    return this.provider.generateTasks(specName, specDescription, requirements, design, architecture, relatedSpecs, onProgress);
   }
 
   /**

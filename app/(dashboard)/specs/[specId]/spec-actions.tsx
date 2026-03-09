@@ -1,9 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Edit, Play, Wand2 } from 'lucide-react';
+import { Edit, Play, Wand2, RotateCcw } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { AlertDialog } from '@/components/ui/alert-dialog';
+import { ProgressModal } from '@/components/ui/progress-modal';
+import { useSpecLoading } from './spec-loading-context';
+import { io, Socket } from 'socket.io-client';
 
 interface SpecActionsProps {
   specId: string;
@@ -15,58 +29,194 @@ interface SpecActionsProps {
 
 export function SpecActions({ specId, specName, currentPhase, hasRequirements, hasDesign }: SpecActionsProps) {
   const router = useRouter();
+  const { setGeneratingRequirements, setGeneratingDesign, setGeneratingTasks } = useSpecLoading();
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [progress, setProgress] = useState<string[]>([]);
+  const [streamingText, setStreamingText] = useState<string>('');
+  const [progressType, setProgressType] = useState<string>('');
+  const [textBuffer, setTextBuffer] = useState<string>('');
+  const bufferTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetSections, setResetSections] = useState({
+    requirements: false,
+    design: false,
+    tasks: false,
+  });
+  
+  // Confirmation dialogs
+  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
+  const [showTasksConfirm, setShowTasksConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  
+  // Alert dialogs
+  const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; description: string }>({
+    open: false,
+    title: '',
+    description: '',
+  });
+
+  // WebSocket connection
+  useEffect(() => {
+    const socketInstance = io({
+      path: '/api/socketio',
+    });
+
+    socketInstance.on('connect', () => {
+      console.log('WebSocket connected');
+      socketInstance.emit('join:spec', specId);
+    });
+
+    socketInstance.on('ai:progress', (data: { type: string; text: string }) => {
+      setProgressType(data.type);
+      
+      // Buffer text and update UI every 100ms or every 50 characters
+      setTextBuffer(prev => {
+        const newBuffer = prev + data.text;
+        
+        // Clear existing timer
+        if (bufferTimerRef.current) {
+          clearTimeout(bufferTimerRef.current);
+        }
+        
+        // Update immediately if buffer is large enough
+        if (newBuffer.length >= 50) {
+          setStreamingText(current => current + newBuffer);
+          return '';
+        }
+        
+        // Otherwise, set timer to flush buffer
+        bufferTimerRef.current = setTimeout(() => {
+          setStreamingText(current => current + newBuffer);
+          setTextBuffer('');
+        }, 100);
+        
+        return newBuffer;
+      });
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      if (bufferTimerRef.current) {
+        clearTimeout(bufferTimerRef.current);
+      }
+      socketInstance.disconnect();
+    };
+  }, [specId]);
 
   const handleGenerateRequirementsAndDesign = async () => {
     if (isGenerating) return;
 
-    const confirmed = confirm(`This will use AI to generate requirements and design for "${specName}". This may take a few minutes. Continue?`);
-    if (!confirmed) return;
-
     setIsGenerating(true);
-
+    setShowGenerateConfirm(false);
+    setStreamingText('');
+    setShowProgressModal(true);
+    
     try {
-      // Generate requirements
-      console.log('Generating requirements...');
-      const reqRes = await fetch(`/api/specs/${specId}/generate-requirements`, {
-        method: 'POST',
-      });
+      // Generate requirements only if they don't exist
+      if (!hasRequirements) {
+        setGeneratingRequirements(true);
+        setProgress(['Starting requirements generation...']);
+        setProgressType('requirements_generation');
+        
+        console.log('Generating requirements...');
+        const reqRes = await fetch(`/api/specs/${specId}/generate-requirements`, {
+          method: 'POST',
+        });
 
-      if (!reqRes.ok) {
-        const error = await reqRes.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to generate requirements');
+        if (!reqRes.ok) {
+          const error = await reqRes.json().catch(() => ({}));
+          const errorMsg = error.error || error.message || 'Failed to generate requirements';
+          throw new Error(errorMsg);
+        }
+        
+        setGeneratingRequirements(false);
       }
 
-      console.log('Requirements generated, generating design...');
-
       // Generate design
+      setGeneratingDesign(true);
+      setProgressType('design_generation');
+      setProgress(['Starting design generation...']);
+      setStreamingText('');
+      console.log('Generating design...');
+
       const designRes = await fetch(`/api/specs/${specId}/generate-design`, {
         method: 'POST',
       });
 
+      console.log('Design response status:', designRes.status, designRes.statusText);
+
       if (!designRes.ok) {
-        const error = await designRes.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to generate design');
+        const errorData = await designRes.json().catch((e) => {
+          console.error('Failed to parse error JSON:', e);
+          return {};
+        });
+        console.log('Design error data:', errorData);
+        const errorMsg = errorData.error || errorData.message || JSON.stringify(errorData) || 'Failed to generate design';
+        throw new Error(errorMsg);
       }
 
-      alert('Requirements and design generated successfully! The page will now reload.');
-      router.refresh();
+      const designData = await designRes.json();
+      console.log('Design generated successfully:', designData);
+
+      setGeneratingDesign(false);
+      
+      // Auto-refresh to show new content
+      setTimeout(() => {
+        router.refresh();
+      }, 500);
+      
+      setAlertDialog({
+        open: true,
+        title: 'Success',
+        description: 'Requirements and design generated successfully!',
+      });
     } catch (error) {
       console.error('Error generating requirements and design:', error);
-      alert(`Failed to generate: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setGeneratingRequirements(false);
+      setGeneratingDesign(false);
+      
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object') {
+        // Try to extract any error message from the object
+        const err = error as any;
+        errorMessage = err.message || err.error || err.statusText || JSON.stringify(error);
+      }
+      
+      console.log('Parsed error message:', errorMessage);
+      
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: `Failed to generate: ${errorMessage}`,
+      });
     } finally {
       setIsGenerating(false);
+      setProgress([]);
+      setProgressType('');
+      setStreamingText('');
+      setShowProgressModal(false);
     }
   };
 
   const handleGenerateTasks = async () => {
     if (isGeneratingTasks) return;
 
-    const confirmed = confirm(`This will use AI to break down "${specName}" into implementation tasks. Continue?`);
-    if (!confirmed) return;
-
     setIsGeneratingTasks(true);
+    setShowTasksConfirm(false);
+    setGeneratingTasks(true);
+    setProgressType('tasks_generation');
+    setProgress(['Starting tasks generation...']);
+    setStreamingText('');
+    setShowProgressModal(true);
 
     try {
       const res = await fetch(`/api/specs/${specId}/generate-tasks`, {
@@ -81,21 +231,95 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
       const data = await res.json();
       const count = data.count || data.data?.count || 0;
 
-      alert(`Successfully generated ${count} task${count !== 1 ? 's' : ''}!`);
-      router.refresh();
+      setGeneratingTasks(false);
+      setAlertDialog({
+        open: true,
+        title: 'Success',
+        description: `Successfully generated ${count} task${count !== 1 ? 's' : ''}!`,
+      });
+      setTimeout(() => router.refresh(), 1500);
     } catch (error) {
       console.error('Error generating tasks:', error);
-      alert(`Failed to generate tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setGeneratingTasks(false);
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: `Failed to generate tasks: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setIsGeneratingTasks(false);
+      setShowProgressModal(false);
     }
   };
 
   const showGenerateRequirements = !hasRequirements || !hasDesign;
   const showGenerateTasks = hasRequirements && hasDesign && currentPhase !== 'COMPLETED';
 
+  const handleReset = async () => {
+    const sectionsToReset = Object.entries(resetSections)
+      .filter(([_, value]) => value)
+      .map(([key]) => key);
+
+    if (sectionsToReset.length === 0) {
+      setAlertDialog({
+        open: true,
+        title: 'No Selection',
+        description: 'Please select at least one section to reset',
+      });
+      return;
+    }
+
+    setShowResetConfirm(true);
+  };
+
+  const confirmReset = async () => {
+    setIsResetting(true);
+    setShowResetConfirm(false);
+
+    try {
+      const updates: any = {};
+      if (resetSections.requirements) updates.requirements = null;
+      if (resetSections.design) updates.design = null;
+      if (resetSections.tasks) updates.tasksDoc = null;
+
+      const res = await fetch(`/api/specs/${specId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      if (!res.ok) throw new Error('Failed to reset sections');
+
+      // If tasks were reset, also delete the task records
+      if (resetSections.tasks) {
+        await fetch(`/api/tasks?specId=${specId}`, {
+          method: 'DELETE',
+        });
+      }
+
+      setAlertDialog({
+        open: true,
+        title: 'Success',
+        description: 'Sections reset successfully!',
+      });
+      setShowResetModal(false);
+      setResetSections({ requirements: false, design: false, tasks: false });
+      setTimeout(() => router.refresh(), 1500);
+    } catch (error) {
+      console.error('Error resetting sections:', error);
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: 'Failed to reset sections',
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
-    <div className="flex items-center space-x-2">
+    <>
+      <div className="flex items-center space-x-2">
       <Button 
         variant="outline"
         onClick={() => router.push(`/specs/${specId}/edit`)}
@@ -103,20 +327,31 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
         <Edit className="h-4 w-4 mr-2" />
         Edit
       </Button>
+
+      <Button 
+        variant="outline"
+        onClick={() => setShowResetModal(true)}
+      >
+        <RotateCcw className="h-4 w-4 mr-2" />
+        Reset
+      </Button>
       
       {showGenerateRequirements && (
         <Button
-          onClick={handleGenerateRequirementsAndDesign}
+          onClick={() => setShowGenerateConfirm(true)}
           disabled={isGenerating}
         >
           <Wand2 className="h-4 w-4 mr-2" />
-          {isGenerating ? 'Generating...' : 'Generate Requirements & Design'}
+          {isGenerating ? 'Generating...' : 
+           hasRequirements && !hasDesign ? 'Generate Design' :
+           !hasRequirements ? 'Generate Requirements & Design' :
+           'Regenerate Requirements & Design'}
         </Button>
       )}
 
       {showGenerateTasks && (
         <Button
-          onClick={handleGenerateTasks}
+          onClick={() => setShowTasksConfirm(true)}
           disabled={isGeneratingTasks}
         >
           <Play className="h-4 w-4 mr-2" />
@@ -124,5 +359,130 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
         </Button>
       )}
     </div>
+
+    <Dialog open={showResetModal} onOpenChange={setShowResetModal}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reset Spec Sections</DialogTitle>
+          <DialogDescription>
+            Select which sections you want to reset. This will permanently delete the selected data.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="reset-requirements"
+              checked={resetSections.requirements}
+              onCheckedChange={(checked) =>
+                setResetSections({ ...resetSections, requirements: checked as boolean })
+              }
+            />
+            <label
+              htmlFor="reset-requirements"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Requirements
+            </label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="reset-design"
+              checked={resetSections.design}
+              onCheckedChange={(checked) =>
+                setResetSections({ ...resetSections, design: checked as boolean })
+              }
+            />
+            <label
+              htmlFor="reset-design"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Design
+            </label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="reset-tasks"
+              checked={resetSections.tasks}
+              onCheckedChange={(checked) =>
+                setResetSections({ ...resetSections, tasks: checked as boolean })
+              }
+            />
+            <label
+              htmlFor="reset-tasks"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Tasks
+            </label>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowResetModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleReset} disabled={isResetting}>
+            {isResetting ? 'Resetting...' : 'Continue'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Confirmation Dialogs */}
+    <ConfirmationDialog
+      open={showGenerateConfirm}
+      onOpenChange={setShowGenerateConfirm}
+      title="Generate Requirements & Design"
+      description={`This will use AI to generate requirements and design for "${specName}". This may take a few minutes. Continue?`}
+      confirmLabel="Generate"
+      onConfirm={handleGenerateRequirementsAndDesign}
+      loading={isGenerating}
+    />
+
+    <ConfirmationDialog
+      open={showTasksConfirm}
+      onOpenChange={setShowTasksConfirm}
+      title="Generate Tasks"
+      description={`This will use AI to break down "${specName}" into implementation tasks. Continue?`}
+      confirmLabel="Generate"
+      onConfirm={handleGenerateTasks}
+      loading={isGeneratingTasks}
+    />
+
+    <ConfirmationDialog
+      open={showResetConfirm}
+      onOpenChange={setShowResetConfirm}
+      title="Confirm Reset"
+      description={`Are you sure you want to reset: ${Object.entries(resetSections).filter(([_, v]) => v).map(([k]) => k).join(', ')}? This action cannot be undone.`}
+      confirmLabel="Reset"
+      variant="destructive"
+      onConfirm={confirmReset}
+      loading={isResetting}
+    />
+
+    {/* Alert Dialog */}
+    <AlertDialog
+      open={alertDialog.open}
+      onOpenChange={(open) => setAlertDialog({ ...alertDialog, open })}
+      title={alertDialog.title}
+      description={alertDialog.description}
+    />
+
+    {/* Progress Modal */}
+    <ProgressModal
+      open={showProgressModal}
+      title={
+        progressType === 'requirements_generation' ? 'Generating Requirements' :
+        progressType === 'design_generation' ? 'Generating Design' :
+        progressType === 'tasks_generation' ? 'Generating Tasks' :
+        'Generating...'
+      }
+      description="AI is analyzing and creating content... (You can dismiss this and generation will continue in background)"
+      progress={streamingText ? [streamingText] : progress}
+      onDismiss={() => setShowProgressModal(false)}
+    />
+    </>
   );
 }

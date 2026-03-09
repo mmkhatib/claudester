@@ -11,6 +11,8 @@ interface CollapsibleSectionProps {
   defaultCollapsed?: boolean;
   storageKey: string; // Unique key for localStorage
   badge?: ReactNode;
+  summary?: string; // Summary text shown when collapsed
+  statusIcon?: ReactNode; // Icon shown on the right (e.g., checkmark)
 }
 
 export function CollapsibleSection({
@@ -20,6 +22,8 @@ export function CollapsibleSection({
   defaultCollapsed = false,
   storageKey,
   badge,
+  summary,
+  statusIcon,
 }: CollapsibleSectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [mounted, setMounted] = useState(false);
@@ -59,12 +63,17 @@ export function CollapsibleSection({
             )}
             <div className="flex-1">
               <CardTitle>{title}</CardTitle>
-              {description && !isCollapsed && (
+              {isCollapsed && summary ? (
+                <CardDescription className="mt-1.5">{summary}</CardDescription>
+              ) : description && !isCollapsed ? (
                 <CardDescription className="mt-1.5">{description}</CardDescription>
-              )}
+              ) : null}
             </div>
           </div>
-          {badge && <div onClick={(e) => e.stopPropagation()}>{badge}</div>}
+          <div className="flex items-center gap-2">
+            {badge && <div onClick={(e) => e.stopPropagation()}>{badge}</div>}
+            {statusIcon && <div onClick={(e) => e.stopPropagation()}>{statusIcon}</div>}
+          </div>
         </div>
       </CardHeader>
       {!isCollapsed && <CardContent>{children}</CardContent>}

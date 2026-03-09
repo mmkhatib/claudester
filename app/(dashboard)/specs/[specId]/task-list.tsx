@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Clock, Play, PlayCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { AlertDialog } from '@/components/ui/alert-dialog';
 
 interface Task {
   _id: string;
@@ -26,6 +27,12 @@ export function TaskList({ tasks, specId }: TaskListProps) {
   const [isStarting, setIsStarting] = useState(false);
   const [startingTaskId, setStartingTaskId] = useState<string | null>(null);
   const router = useRouter();
+  
+  const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; description: string }>({
+    open: false,
+    title: '',
+    description: '',
+  });
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -55,15 +62,27 @@ export function TaskList({ tasks, specId }: TaskListProps) {
       const result = await response.json();
 
       if (!result.success) {
-        alert(`Failed to start task: ${result.error}`);
+        setAlertDialog({
+          open: true,
+          title: 'Error',
+          description: `Failed to start task: ${result.error}`,
+        });
         return;
       }
 
-      alert(`Task started successfully! Agent ID: ${result.data.agent.agentId}`);
-      router.refresh();
+      setAlertDialog({
+        open: true,
+        title: 'Success',
+        description: `Task started successfully! Agent ID: ${result.data.agent.agentId}`,
+      });
+      setTimeout(() => router.refresh(), 1500);
     } catch (error) {
       console.error('Error starting task:', error);
-      alert('Failed to start task');
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: 'Failed to start task',
+      });
     } finally {
       setStartingTaskId(null);
     }
@@ -71,7 +90,11 @@ export function TaskList({ tasks, specId }: TaskListProps) {
 
   const handleStartSelected = async () => {
     if (selectedTasks.size === 0) {
-      alert('Please select at least one task');
+      setAlertDialog({
+        open: true,
+        title: 'No Selection',
+        description: 'Please select at least one task',
+      });
       return;
     }
 
@@ -89,24 +112,30 @@ export function TaskList({ tasks, specId }: TaskListProps) {
       const result = await response.json();
 
       if (!result.success) {
-        alert(`Failed to start tasks: ${result.error}`);
+        setAlertDialog({
+          open: true,
+          title: 'Error',
+          description: `Failed to start tasks: ${result.error}`,
+        });
         return;
       }
 
       const { summary } = result.data;
-      alert(
-        `Task execution completed!\n` +
-        `Total: ${summary.total}\n` +
-        `Completed: ${summary.completedCount}\n` +
-        `Failed: ${summary.failedCount}\n` +
-        `Queued: ${summary.queuedCount}`
-      );
+      setAlertDialog({
+        open: true,
+        title: 'Tasks Started',
+        description: `Task execution completed!\nTotal: ${summary.total}\nCompleted: ${summary.completedCount}\nFailed: ${summary.failedCount}\nQueued: ${summary.queuedCount}`,
+      });
 
       setSelectedTasks(new Set());
-      router.refresh();
+      setTimeout(() => router.refresh(), 1500);
     } catch (error) {
       console.error('Error starting tasks:', error);
-      alert('Failed to start tasks');
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: 'Failed to start tasks',
+      });
     } finally {
       setIsStarting(false);
     }
@@ -297,6 +326,13 @@ export function TaskList({ tasks, specId }: TaskListProps) {
           </div>
         ))}
       </div>
+      
+      <AlertDialog
+        open={alertDialog.open}
+        onOpenChange={(open) => setAlertDialog({ ...alertDialog, open })}
+        title={alertDialog.title}
+        description={alertDialog.description}
+      />
     </div>
   );
 }

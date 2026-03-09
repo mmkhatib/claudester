@@ -57,6 +57,16 @@ export const POST = withErrorHandling(async (
     _id: { $ne: spec._id }
   }).select('name status').limit(10);
 
+  const progressCallback = (text: string) => {
+    if (global.io) {
+      global.io.to(`spec:${specId}`).emit('ai:progress', {
+        type: 'tasks_generation',
+        text,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  };
+
   const generatedTasks = await claudeClient.generateTasks(
     spec.title,
     spec.description || 'No description provided',
@@ -67,7 +77,8 @@ export const POST = withErrorHandling(async (
       id: s._id.toString(), 
       name: s.name, 
       status: s.status 
-    }))
+    })),
+    progressCallback
   );
 
   console.log(`Generated ${generatedTasks.length} tasks`);
@@ -133,7 +144,8 @@ export const POST = withErrorHandling(async (
         'Wrote tasks to workspace file'
       );
     } catch (error) {
-      loggers.spec.error({ error, projectId: fullProject._id }, 'Failed to write tasks to file');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      loggers.spec.error({ errorMsg, projectId: fullProject._id }, 'Failed to write tasks to file');
       // Don't fail the request, but log the error
     }
   }

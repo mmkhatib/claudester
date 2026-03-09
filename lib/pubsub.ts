@@ -95,7 +95,8 @@ export async function publishSpecUpdate(message: Omit<SpecUpdateMessage, 'type' 
   try {
     await redisPub.publish(Channel.SPEC_UPDATES, JSON.stringify(fullMessage));
   } catch (error) {
-    loggers.redis.warn({ channel: Channel.SPEC_UPDATES, error }, 'Failed to publish message (Redis unavailable)');
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    loggers.redis.warn({ channel: Channel.SPEC_UPDATES, errorMsg }, 'Failed to publish message (Redis unavailable)');
   }
 }
 
@@ -109,7 +110,8 @@ export async function publishTaskUpdate(message: Omit<TaskUpdateMessage, 'type' 
   try {
     await redisPub.publish(Channel.TASK_UPDATES, JSON.stringify(fullMessage));
   } catch (error) {
-    loggers.redis.warn({ channel: Channel.TASK_UPDATES, error }, 'Failed to publish message (Redis unavailable)');
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    loggers.redis.warn({ channel: Channel.TASK_UPDATES, errorMsg }, 'Failed to publish message (Redis unavailable)');
   }
 }
 
@@ -123,7 +125,8 @@ export async function publishAgentUpdate(message: Omit<AgentUpdateMessage, 'type
   try {
     await redisPub.publish(Channel.AGENT_UPDATES, JSON.stringify(fullMessage));
   } catch (error) {
-    loggers.redis.warn({ channel: Channel.AGENT_UPDATES, error }, 'Failed to publish message (Redis unavailable)');
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    loggers.redis.warn({ channel: Channel.AGENT_UPDATES, errorMsg }, 'Failed to publish message (Redis unavailable)');
   }
 }
 
@@ -137,7 +140,8 @@ export async function publishTestResult(message: Omit<TestResultMessage, 'type' 
   try {
     await redisPub.publish(Channel.TEST_RESULTS, JSON.stringify(fullMessage));
   } catch (error) {
-    loggers.redis.warn({ channel: Channel.TEST_RESULTS, error }, 'Failed to publish message (Redis unavailable)');
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    loggers.redis.warn({ channel: Channel.TEST_RESULTS, errorMsg }, 'Failed to publish message (Redis unavailable)');
   }
 }
 
@@ -151,7 +155,8 @@ export async function publishActivityLog(message: Omit<ActivityLogMessage, 'type
   try {
     await redisPub.publish(Channel.ACTIVITY_LOG, JSON.stringify(fullMessage));
   } catch (error) {
-    loggers.redis.warn({ channel: Channel.ACTIVITY_LOG, error }, 'Failed to publish message (Redis unavailable)');
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    loggers.redis.warn({ channel: Channel.ACTIVITY_LOG, errorMsg }, 'Failed to publish message (Redis unavailable)');
   }
 }
 
@@ -165,7 +170,8 @@ export async function publishSystemAlert(message: Omit<SystemAlertMessage, 'type
   try {
     await redisPub.publish(Channel.SYSTEM_ALERTS, JSON.stringify(fullMessage));
   } catch (error) {
-    loggers.redis.warn({ channel: Channel.SYSTEM_ALERTS, error }, 'Failed to publish message (Redis unavailable)');
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    loggers.redis.warn({ channel: Channel.SYSTEM_ALERTS, errorMsg }, 'Failed to publish message (Redis unavailable)');
   }
 }
 
@@ -224,7 +230,8 @@ redisSub.on('message', async (channel: string, message: string) => {
       )
     );
   } catch (error) {
-    loggers.redis.error({ channel, error }, 'Error processing message');
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    loggers.redis.error({ channel, errorMsg }, 'Error processing message');
   }
 });
 

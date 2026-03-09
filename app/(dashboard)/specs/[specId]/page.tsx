@@ -12,6 +12,10 @@ import {
 import { SpecActions } from './spec-actions';
 import { SpecSections } from './spec-sections';
 import { getBaseUrl } from '@/lib/config';
+import { SpecLoadingProvider } from './spec-loading-context';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import 'github-markdown-css/github-markdown.css';
 
 interface PageProps {
   params: {
@@ -66,6 +70,11 @@ export default async function SpecDetailPage({ params }: PageProps) {
 
   const tasks = await getTasks(params.specId);
 
+  // Calculate progress based on task completion
+  const taskProgress = tasks.length > 0
+    ? Math.round((tasks.filter((t: any) => t.status === 'COMPLETED').length / tasks.length) * 100)
+    : 0;
+
   const getPhaseColor = (phase: string) => {
     switch (phase?.toUpperCase()) {
       case 'REQUIREMENTS':
@@ -100,7 +109,8 @@ export default async function SpecDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <SpecLoadingProvider>
+      <div className="space-y-6">
       {/* Back navigation */}
       <div>
         <Link href="/specs">
@@ -118,9 +128,15 @@ export default async function SpecDetailPage({ params }: PageProps) {
             <FileText className="h-8 w-8 text-zinc-400" />
             <h1 className="text-3xl font-bold">{spec.title}</h1>
           </div>
-          <p className="text-zinc-600 dark:text-zinc-400 mt-2">
-            {spec.description || 'No description provided'}
-          </p>
+          <div className="text-zinc-600 dark:text-zinc-400 mt-2 markdown-body bg-transparent">
+            {spec.description ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {spec.description}
+              </ReactMarkdown>
+            ) : (
+              <p className="text-sm">No description provided</p>
+            )}
+          </div>
           <div className="flex items-center space-x-4 mt-3">
             {spec.projectId && (
               <Link href={`/projects/${spec.projectId._id || spec.projectId}`}>
@@ -161,22 +177,25 @@ export default async function SpecDetailPage({ params }: PageProps) {
       </div>
 
       {/* Progress */}
-      {spec.progress !== undefined && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Overall Progress</span>
-              <span className="text-2xl font-bold">{spec.progress}%</span>
-            </div>
-            <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-3">
-              <div
-                className="bg-blue-600 h-3 rounded-full transition-all"
-                style={{ width: `${spec.progress}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Overall Progress</span>
+            <span className="text-2xl font-bold">{taskProgress}%</span>
+          </div>
+          <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-3">
+            <div
+              className="bg-blue-600 h-3 rounded-full transition-all"
+              style={{ width: `${taskProgress}%` }}
+            />
+          </div>
+          {tasks.length > 0 && (
+            <p className="text-xs text-zinc-500 mt-2">
+              {tasks.filter((t: any) => t.status === 'COMPLETED').length} of {tasks.length} tasks completed
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Content sections - collapsible with persisted state */}
       <SpecSections spec={spec} tasks={tasks} />
@@ -212,5 +231,6 @@ export default async function SpecDetailPage({ params }: PageProps) {
         </CardContent>
       </Card>
     </div>
+    </SpecLoadingProvider>
   );
 }

@@ -26,3 +26,34 @@ export async function GET(
     );
   }
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { specId: string } }
+) {
+  try {
+    await connectDB();
+
+    const body = await request.json();
+    
+    const spec = await Spec.findByIdAndUpdate(
+      params.specId,
+      { $set: body },
+      { new: true }
+    );
+    
+    if (!spec) {
+      return NextResponse.json(
+        { success: false, error: 'Spec not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: spec });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}

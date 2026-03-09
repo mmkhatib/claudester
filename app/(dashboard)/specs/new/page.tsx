@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { AlertDialog } from '@/components/ui/alert-dialog';
 
 export default function NewSpecPage() {
   const router = useRouter();
@@ -21,6 +22,12 @@ export default function NewSpecPage() {
     title: '',
     description: '',
     priority: 'P1',
+  });
+  
+  const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; description: string }>({
+    open: false,
+    title: '',
+    description: '',
   });
 
   useEffect(() => {
@@ -62,7 +69,11 @@ export default function NewSpecPage() {
       }
     } catch (error) {
       console.error('Error creating spec:', error);
-      alert(`Failed to create spec: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: `Failed to create spec: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -157,6 +168,13 @@ export default function NewSpecPage() {
           </CardFooter>
         </Card>
       </form>
+      
+      <AlertDialog
+        open={alertDialog.open}
+        onOpenChange={(open) => setAlertDialog({ ...alertDialog, open })}
+        title={alertDialog.title}
+        description={alertDialog.description}
+      />
     </div>
   );
 }

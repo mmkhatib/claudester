@@ -20,8 +20,10 @@ const envSchema = zod_1.z.object({
     REDIS_HOST: zod_1.z.string().default('localhost'),
     REDIS_PORT: zod_1.z.string().regex(/^\d+$/).transform(Number).default('6379'),
     REDIS_PASSWORD: zod_1.z.string().optional(),
-    // Anthropic Claude API
-    ANTHROPIC_API_KEY: zod_1.z.string().min(1, 'Anthropic API key is required'),
+    // AI Provider (extendable for future providers like OpenAI, local models, etc.)
+    AI_PROVIDER: zod_1.z.enum(['anthropic-api', 'claude-code-cli']).default('claude-code-cli'),
+    // Anthropic Claude API (only required when using anthropic-api provider)
+    ANTHROPIC_API_KEY: zod_1.z.string().optional(),
     // Authentication (Clerk)
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: zod_1.z.string().min(1, 'Clerk publishable key is required'),
     CLERK_SECRET_KEY: zod_1.z.string().min(1, 'Clerk secret key is required'),
@@ -55,14 +57,12 @@ function validateEnv() {
 }
 /**
  * Get validated environment variables
- * Memoized to avoid repeated validation
+ * Re-validates each time in development for dynamic changes
  */
-let cachedEnv = null;
 function getEnv() {
-    if (!cachedEnv) {
-        cachedEnv = validateEnv();
-    }
-    return cachedEnv;
+    // In development, always re-validate to pick up .env changes
+    // In production, this would be cached
+    return validateEnv();
 }
 /**
  * Check if we're in development mode

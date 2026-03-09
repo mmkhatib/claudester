@@ -74,7 +74,23 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     ? customWorkspacePath
     : generateWorkspacePath(name, user._id.toString());
 
-  // Create project
+  // Initialize project workspace directory structure FIRST
+  // Create a temporary project object for workspace initialization
+  const tempProject = {
+    _id: 'temp',
+    name,
+    description: description || '',
+  };
+  
+  try {
+    await initializeProjectWorkspace(workspacePath, tempProject as any);
+    console.log('POST /api/projects - Workspace initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize workspace:', error);
+    throw new Error(`Cannot create project: ${error instanceof Error ? error.message : 'Failed to create workspace folder'}`);
+  }
+
+  // Create project in database only after workspace is created
   const project = await Project.create({
     name,
     description,
@@ -84,16 +100,6 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   });
 
   console.log('POST /api/projects - Created project:', project._id, 'Workspace:', workspacePath);
-
-  // Initialize project workspace directory structure
-  try {
-    await initializeProjectWorkspace(workspacePath, project);
-    console.log('POST /api/projects - Workspace initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize workspace:', error);
-    // Don't fail the request, but log the error
-    // The workspace can be initialized later if needed
-  }
 
   const populatedProject = await Project.findById(project._id)
     .populate('ownerId', 'name email avatar');

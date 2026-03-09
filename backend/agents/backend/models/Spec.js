@@ -60,7 +60,7 @@ const SpecSchema = new mongoose_1.Schema({
         type: Number,
         required: true
     },
-    name: {
+    title: {
         type: String,
         required: true
     },

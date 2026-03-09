@@ -9,6 +9,8 @@ import {
   FileText,
   Clock,
   FolderKanban,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
 
 async function getSpecs() {
@@ -23,6 +25,18 @@ async function getSpecs() {
     return Array.isArray(specs) ? specs : [];
   } catch (error) {
     console.error('Failed to fetch specs:', error);
+    return [];
+  }
+}
+
+async function getTasks(specId: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3500';
+    const res = await fetch(`${baseUrl}/api/tasks?specId=${specId}`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data?.tasks || json.tasks || [];
+  } catch (error) {
     return [];
   }
 }
@@ -58,11 +72,20 @@ function getRelativeTime(date: Date): string {
 export default async function SpecsPage() {
   const specs = await getSpecs();
 
-  // Fetch project data for all specs in parallel
-  const specsWithProjects = await Promise.all(
+  // Fetch project data and tasks for all specs in parallel
+  const specsWithData = await Promise.all(
     specs.map(async (spec: any) => {
-      const project = spec.projectId ? await getProject(spec.projectId) : null;
-      return { ...spec, project };
+      const [project, tasks] = await Promise.all([
+        spec.projectId ? getProject(spec.projectId) : null,
+        getTasks(spec._id)
+      ]);
+      
+      // Calculate task-based progress
+      const taskProgress = tasks.length > 0
+        ? Math.round((tasks.filter((t: any) => t.status === 'COMPLETED').length / tasks.length) * 100)
+        : 0;
+      
+      return { ...spec, project, taskProgress, tasks };
     })
   );
 
@@ -137,7 +160,7 @@ export default async function SpecsPage() {
       </Card>
 
       {/* Specs list */}
-      {specsWithProjects.length === 0 ? (
+      {specsWithData.length === 0 ? (
         <Card>
           <CardContent className="py-16">
             <div className="text-center">
@@ -157,7 +180,7 @@ export default async function SpecsPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {specsWithProjects.map((spec: any) => (
+          {specsWithData.map((spec: any) => (
             <Link key={spec._id} href={`/specs/${spec._id}`}>
               <Card className="hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
                 <CardContent className="pt-6">
@@ -170,6 +193,35 @@ export default async function SpecsPage() {
                       <p className="text-zinc-600 dark:text-zinc-400 mb-3">
                         {spec.description || 'No description provided'}
                       </p>
+                      
+                      {/* Phase completion indicators */}
+                      <div className="flex items-center gap-3 mb-3 text-xs">
+                        <div className="flex items-center gap-1">
+                          {spec.requirements && Object.keys(spec.requirements).length > 0 ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          ) : (
+                            <Circle className="h-3.5 w-3.5 text-zinc-400" />
+                          )}
+                          <span className="text-zinc-600 dark:text-zinc-400">Requirements</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {spec.design ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          ) : (
+                            <Circle className="h-3.5 w-3.5 text-zinc-400" />
+                          )}
+                          <span className="text-zinc-600 dark:text-zinc-400">Design</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {spec.tasks && spec.tasks.length > 0 ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          ) : (
+                            <Circle className="h-3.5 w-3.5 text-zinc-400" />
+                          )}
+                          <span className="text-zinc-600 dark:text-zinc-400">Tasks</span>
+                        </div>
+                      </div>
+                      
                       <div className="flex items-center space-x-2 text-sm text-zinc-500">
                         {spec.project && (
                           <>
@@ -202,20 +254,18 @@ export default async function SpecsPage() {
                   </div>
 
                   {/* Progress bar */}
-                  {spec.progress !== undefined && (
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-zinc-600 dark:text-zinc-400">Overall Progress</span>
-                        <span className="font-medium">{spec.progress}%</span>
-                      </div>
-                      <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-2.5">
-                        <div
-                          className="bg-blue-600 h-2.5 rounded-full transition-all"
-                          style={{ width: `${spec.progress}%` }}
-                        />
-                      </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-zinc-600 dark:text-zinc-400">Overall Progress</span>
+                      <span className="font-medium">{spec.taskProgress}%</span>
                     </div>
-                  )}
+                    <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full transition-all"
+                        style={{ width: `${spec.taskProgress}%` }}
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </Link>

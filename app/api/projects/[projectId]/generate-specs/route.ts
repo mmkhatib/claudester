@@ -45,11 +45,23 @@ export const POST = withErrorHandling(async (
 
   let generatedSpecs;
   try {
+    // Emit progress updates via WebSocket
+    const progressCallback = (text: string) => {
+      if (global.io) {
+        global.io.to(`project:${projectId}`).emit('ai:progress', {
+          type: 'spec_generation',
+          text,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    };
+
     generatedSpecs = await claudeClient.generateSpecifications(
       project.name,
       project.description || 'No description provided',
       project.architecture,
-      existingSpecs.map(s => ({ name: s.name, description: s.description }))
+      existingSpecs.map(s => ({ name: s.name, description: s.description })),
+      progressCallback
     );
   } catch (error: any) {
     console.error('Claude API error:', error);

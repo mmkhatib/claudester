@@ -36,6 +36,8 @@ export const loggers = {
   agent: createLogger('agent'),
   auth: createLogger('auth'),
   websocket: createLogger('websocket'),
+  spec: createLogger('spec'),
+  server: createLogger('server'),
 };
 
 /**

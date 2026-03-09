@@ -147,3 +147,31 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     201
   );
 });
+
+
+/**
+ * DELETE /api/tasks?specId=xxx
+ * Delete all tasks for a spec
+ */
+export const DELETE = withErrorHandling(async (request: NextRequest) => {
+  await requirePermission('TASK_DELETE');
+  await connectDB();
+
+  const params = parseSearchParams(request);
+  const { specId } = params;
+
+  if (!specId) {
+    return errorResponse(
+      'specId is required',
+      'MISSING_SPEC_ID',
+      HttpStatus.BAD_REQUEST
+    );
+  }
+
+  const result = await Task.deleteMany({ specId });
+
+  return successResponse(
+    { deletedCount: result.deletedCount },
+    `Deleted ${result.deletedCount} tasks`
+  );
+});

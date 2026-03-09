@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, FolderOpen } from 'lucide-react';
 import Link from 'next/link';
+import { AlertDialog } from '@/components/ui/alert-dialog';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -19,35 +20,24 @@ export default function NewProjectPage() {
     workspacePath: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dirHandle, setDirHandle] = useState<any>(null);
+  
+  const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; description: string }>({
+    open: false,
+    title: '',
+    description: '',
+  });
 
   const handleFolderSelect = async () => {
-    // Try using the File System Access API (modern browsers)
     if ('showDirectoryPicker' in window) {
       try {
-        const dirHandle = await (window as any).showDirectoryPicker();
-        // Get the full path (this is tricky in browsers, so we'll use the name)
-        // Note: For security reasons, browsers don't expose full filesystem paths
-        // We'll need to construct a path or use the directory name
-        setFormData({ ...formData, workspacePath: dirHandle.name });
+        const handle = await (window as any).showDirectoryPicker();
+        setDirHandle(handle);
+        // Show a placeholder path since we can't get the real one
+        setFormData({ ...formData, workspacePath: `[Selected: ${handle.name}]` });
       } catch (err) {
-        // User cancelled the picker
         console.log('Folder selection cancelled');
       }
-    } else {
-      // Fallback: trigger the hidden file input
-      fileInputRef.current?.click();
-    }
-  };
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      // Get the path from the first file
-      const file = files[0];
-      // Extract the directory path (webkitRelativePath gives us the folder structure)
-      const path = (file as any).webkitRelativePath || file.name;
-      const folderPath = path.split('/')[0];
-      setFormData({ ...formData, workspacePath: folderPath });
     }
   };
 
@@ -56,30 +46,80 @@ export default function NewProjectPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      // If user browsed for a folder, create it directly using File System Access API
+      if (dirHandle) {
+        const projectSlug = formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        
+        // Create project folder
+        const projectFolder = await dirHandle.getDirectoryHandle(projectSlug, { create: true });
+        
+        // Create .claudester structure
+        const claudesterFolder = await projectFolder.getDirectoryHandle('.claudester', { create: true });
+        const specsFolder = await claudesterFolder.getDirectoryHandle('specs', { create: true });
+        const contextFolder = await claudesterFolder.getDirectoryHandle('context', { create: true });
+        
+        // Create config.json
+        const configFile = await claudesterFolder.getFileHandle('config.json', { create: true });
+        const configWritable = await configFile.createWritable();
+        await configWritable.write(JSON.stringify({
+          version: '1.0.0',
+          projectName: formData.name,
+          createdAt: new Date().toISOString(),
+        }, null, 2));
+        await configWritable.close();
+        
+        // Create project-context.md
+        const contextFile = await contextFolder.getFileHandle('project-context.md', { create: true });
+        const contextWritable = await contextFile.createWritable();
+        await contextWritable.write(`# ${formData.name}\n\n${formData.description || 'No description provided.'}`);
+        await contextWritable.close();
+        
+        // Now create in database with a placeholder path
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...formData,
+            workspacePath: `browser-fs:${dirHandle.name}/${projectSlug}`,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to create project');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to create project');
+        }
+      } else {
+        // User typed a path manually
+        const projectSlug = formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const fullWorkspacePath = formData.workspacePath.endsWith('/') 
+          ? `${formData.workspacePath}${projectSlug}`
+          : `${formData.workspacePath}/${projectSlug}`;
+        
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...formData,
+            workspacePath: fullWorkspacePath,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to create project');
+        }
       }
 
-      const data = await response.json();
-      console.log('Created project:', data);
-
-      // Handle different response structures
-      const projectId = data._id || data.data?._id || data.id;
-
-      // Redirect to projects list instead of detail page
-      // This avoids 404 errors from race conditions in data fetching
-      router.refresh();
+      // Redirect to projects list
       router.push('/projects');
+      router.refresh();
     } catch (error) {
       console.error('Error creating project:', error);
-      alert(`Failed to create project: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: `Failed to create project: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -145,13 +185,16 @@ export default function NewProjectPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="workspacePath">Workspace Folder *</Label>
+              <Label htmlFor="workspacePath">Parent Workspace Folder *</Label>
               <div className="flex gap-2">
                 <Input
                   id="workspacePath"
-                  placeholder="Select or enter workspace folder path"
+                  placeholder="/Users/username/workspace/projects or click Browse"
                   value={formData.workspacePath}
-                  onChange={(e) => setFormData({ ...formData, workspacePath: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, workspacePath: e.target.value });
+                    setDirHandle(null); // Clear browse selection if typing
+                  }}
                   required
                   className="flex-1"
                 />
@@ -165,18 +208,8 @@ export default function NewProjectPage() {
                   Browse
                 </Button>
               </div>
-              {/* Hidden file input for fallback */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                // @ts-ignore - webkitdirectory is not in standard types
-                webkitdirectory="true"
-                directory="true"
-                onChange={handleFileInputChange}
-                className="hidden"
-              />
-              <p className="text-sm text-zinc-500">
-                Absolute path to the project workspace folder. Click Browse to select a folder.
+              <p className="text-xs text-muted-foreground">
+                Browse to select a folder (browser will create files directly) or type an absolute path for server-side creation.
               </p>
             </div>
           </CardContent>
@@ -186,12 +219,19 @@ export default function NewProjectPage() {
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
               {loading ? 'Creating...' : 'Create Project'}
             </Button>
           </CardFooter>
         </Card>
       </form>
+      
+      <AlertDialog
+        open={alertDialog.open}
+        onOpenChange={(open) => setAlertDialog({ ...alertDialog, open })}
+        title={alertDialog.title}
+        description={alertDialog.description}
+      />
     </div>
   );
 }

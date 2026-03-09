@@ -55,21 +55,39 @@ export async function initializeProjectWorkspace(
   project: IProject
 ): Promise<void> {
   try {
-    loggers.server.info({ workspacePath, projectName: project.name }, 'Initializing project workspace with .claudester structure');
+    console.log('Initializing project workspace:', workspacePath, 'for project:', project.name);
 
-    // Use the WorkspaceManager to create .claudester/ structure
-    const actualWorkspacePath = await workspaceManager.initializeWorkspace(
-      project.name,
-      project._id.toString()
+    // Create the workspace directory
+    await fs.mkdir(workspacePath, { recursive: true });
+    
+    // Create .claudester structure
+    const claudesterPath = path.join(workspacePath, '.claudester');
+    await fs.mkdir(path.join(claudesterPath, 'specs'), { recursive: true });
+    await fs.mkdir(path.join(claudesterPath, 'context'), { recursive: true });
+    
+    // Create config file
+    const config = {
+      version: '1.0.0',
+      projectId: project._id.toString(),
+      projectName: project.name,
+      createdAt: new Date().toISOString(),
+    };
+    await fs.writeFile(
+      path.join(claudesterPath, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
+    
+    // Create project context
+    await fs.writeFile(
+      path.join(claudesterPath, 'context', 'project-context.md'),
+      generateClaudeContext(project)
     );
 
-    loggers.server.info({
-      workspacePath: actualWorkspacePath,
-      projectId: project._id
-    }, 'Project workspace initialized successfully with .claudester/ structure');
+    console.log('Project workspace initialized successfully:', workspacePath);
   } catch (error) {
-    loggers.server.error({ error, workspacePath }, 'Failed to initialize project workspace');
-    throw new Error(`Failed to initialize workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Failed to initialize project workspace:', errorMessage, 'Path:', workspacePath);
+    throw new Error(`Failed to initialize workspace: ${errorMessage}`);
   }
 }
 
@@ -97,7 +115,7 @@ export async function createSpecDirectory(
 
     loggers.server.info({ workspacePath, specId }, 'Spec directory created successfully in .claudester/specs/');
   } catch (error) {
-    loggers.server.error({ error, specId }, 'Failed to create spec directory');
+    loggers.server.error({ errorMsg: error instanceof Error ? error.message : "Unknown error", specId }, 'Failed to create spec directory');
     throw new Error(`Failed to create spec directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -116,7 +134,7 @@ export async function writeRequirements(
 
     loggers.server.info({ specId, workspacePath }, 'Requirements written to .claudester/specs/');
   } catch (error) {
-    loggers.server.error({ error, specId }, 'Failed to write requirements');
+    loggers.server.error({ errorMsg: error instanceof Error ? error.message : "Unknown error", specId }, 'Failed to write requirements');
     throw new Error(`Failed to write requirements: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -135,7 +153,7 @@ export async function writeDesign(
 
     loggers.server.info({ specId, workspacePath }, 'Design written to .claudester/specs/');
   } catch (error) {
-    loggers.server.error({ error, specId }, 'Failed to write design');
+    loggers.server.error({ errorMsg: error instanceof Error ? error.message : "Unknown error", specId }, 'Failed to write design');
     throw new Error(`Failed to write design: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -154,7 +172,7 @@ export async function writeTasks(
 
     loggers.server.info({ specId, workspacePath, taskCount: tasks.length }, 'Tasks written to .claudester/specs/');
   } catch (error) {
-    loggers.server.error({ error, specId }, 'Failed to write tasks');
+    loggers.server.error({ errorMsg: error instanceof Error ? error.message : "Unknown error", specId }, 'Failed to write tasks');
     throw new Error(`Failed to write tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -234,7 +252,7 @@ export async function createApprovalMarker(
 
     loggers.server.info({ specId, phase }, 'Approval marker created in .claudester/specs/');
   } catch (error) {
-    loggers.server.error({ error, specId, phase }, 'Failed to create approval marker');
+    loggers.server.error({ errorMsg: error instanceof Error ? error.message : "Unknown error", specId, phase }, 'Failed to create approval marker');
     throw new Error(`Failed to create approval marker: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

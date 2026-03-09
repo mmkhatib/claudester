@@ -63,91 +63,100 @@ export class ClaudeCodeCLIProvider implements AIProvider {
     jsonSchema?: object;
     tools?: string;
     timeout?: number;
+    onProgress?: (text: string) => void;
   } = {}): Promise<string> {
     return new Promise((resolve, reject) => {
       try {
         // Build command - escape the prompt for shell
         const escapedPrompt = prompt.replace(/'/g, "'\\''");
 
-        // Build the full command
-        let cmd = `claude --print`;
+        // Build the full command with streaming
+        let cmd = `claude -p '${escapedPrompt}' --output-format stream-json --verbose --include-partial-messages`;
 
-        // Add JSON schema if provided
-        if (options.jsonSchema) {
-          const escapedSchema = JSON.stringify(options.jsonSchema).replace(/'/g, "'\\''");
-          cmd += ` --json-schema '${escapedSchema}' --output-format json`;
-        }
-
-        cmd += ` '${escapedPrompt}'`;
-
-        console.log('[CLI Provider] Executing claude via shell...');
+        console.log('[CLI Provider] Executing claude with streaming...');
 
         // Create environment without ANTHROPIC_API_KEY to avoid conflicts
-        // Claude CLI should use subscription auth, not API key
         const env = { ...process.env };
         delete env.ANTHROPIC_API_KEY;
 
-        // Run through shell for proper TTY handling
-        // Change to parent directory to avoid .env file interference
+        // Run through shell
         const claudeProcess = spawn('/bin/sh', ['-c', cmd], {
           env,
-          cwd: '/Users/overlord',  // Run from parent directory to avoid .env file
-          stdio: ['pipe', 'pipe', 'pipe']  // Use pipe for stdin to avoid TTY issues
+          cwd: '/Users/overlord',
+          stdio: ['pipe', 'pipe', 'pipe']
         });
 
-        // Close stdin immediately so Claude doesn't wait for input
         claudeProcess.stdin.end();
 
-        let stdout = '';
+        let fullResponse = '';
+        let rawOutput = '';
         let stderr = '';
-        let lastProgressLog = Date.now();
 
-        // Collect stdout
+        // Process streaming JSON output
         claudeProcess.stdout.on('data', (data) => {
-          stdout += data.toString();
-
-          // Log progress every 30 seconds
-          const now = Date.now();
-          if (now - lastProgressLog > 30000) {
-            console.log('[CLI Provider] Still processing... (received', stdout.length, 'bytes so far)');
-            lastProgressLog = now;
+          const chunk = data.toString();
+          rawOutput += chunk;
+          
+          // Split by newlines to process each JSON event
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            
+            try {
+              const event = JSON.parse(line);
+              
+              // Extract text deltas from stream events
+              if (event.type === 'stream_event' && 
+                  event.event?.delta?.type === 'text_delta' && 
+                  event.event?.delta?.text) {
+                const text = event.event.delta.text;
+                fullResponse += text;
+                
+                // Call progress callback if provided
+                if (options.onProgress) {
+                  console.log('[CLI Provider] Streaming text:', text.substring(0, 50));
+                  options.onProgress(text);
+                }
+              }
+              
+              // Log thinking events
+              if (event.type === 'stream_event' && 
+                  event.event?.type === 'thinking') {
+                console.log('[CLI Provider] Thinking:', event.event.thinking?.substring(0, 100));
+              }
+            } catch (e) {
+              // Ignore JSON parse errors for incomplete lines
+            }
           }
         });
 
-        // Collect stderr
         claudeProcess.stderr.on('data', (data) => {
           stderr += data.toString();
         });
 
-        // Handle process completion
         claudeProcess.on('close', (code) => {
           console.log('[CLI Provider] Process exited with code:', code);
-          console.log('[CLI Provider] stdout length:', stdout.length);
-          console.log('[CLI Provider] stderr length:', stderr.length);
+          console.log('[CLI Provider] Full response length:', fullResponse.length);
 
           if (code !== 0 && code !== null) {
             console.error('[CLI Provider] stderr:', stderr);
             reject(new Error(`Claude CLI exited with code ${code}: ${stderr}`));
           } else {
-            if (stderr) {
-              console.warn('[CLI Provider] stderr:', stderr);
+            if (fullResponse.length === 0) {
+              console.warn('[CLI Provider] WARNING: No text extracted from stream');
+              console.log('[CLI Provider] Raw output:', rawOutput.substring(0, 500));
             }
-            if (stdout.length === 0) {
-              console.warn('[CLI Provider] WARNING: Claude returned empty output');
-            } else {
-              console.log('[CLI Provider] Got response, first 200 chars:', stdout.substring(0, 200));
-            }
-            resolve(stdout.trim());
+            resolve(fullResponse.trim());
           }
         });
 
-        // Handle process errors
         claudeProcess.on('error', (error) => {
           console.error('[CLI Provider] Process error:', error);
           reject(new Error(`Failed to spawn Claude CLI: ${error.message}`));
         });
 
-        // Set timeout (default 10 minutes for spec generation, 3 minutes for other tasks)
+        // Set timeout
         const timeoutMs = options.timeout || 180000;
         const timeoutMinutes = Math.round(timeoutMs / 60000);
 
@@ -261,7 +270,8 @@ Output as JSON with this structure:
     projectName: string,
     projectDescription: string,
     architecture?: ProjectArchitecture,
-    existingSpecs?: Array<{ name: string; description: string }>
+    existingSpecs?: Array<{ name: string; description: string }>,
+    onProgress?: (text: string) => void
   ): Promise<GeneratedSpec[]> {
     const architectureText = architecture ? `
 
@@ -327,10 +337,9 @@ Be thorough but practical. Think through feature dependencies and integration po
     };
 
     console.log('[CLI Provider] Starting spec generation with 10 minute timeout...');
-    // Try without JSON schema first to see if that's causing the issue
     const response = await this.executeClaude(prompt, {
-      // jsonSchema,
-      timeout: 600000 // 10 minutes for spec generation with thinking
+      timeout: 600000, // 10 minutes for spec generation with thinking
+      onProgress: onProgress // Pass through progress callback
     });
 
     console.log('[CLI Provider] Response received, length:', response.length);
@@ -611,7 +620,8 @@ Task: ${taskDescription}${criteriaText}`;
     specDescription: string,
     projectContext?: string,
     architecture?: ProjectArchitecture,
-    relatedSpecs?: Array<{ id: string; name: string; description: string }>
+    relatedSpecs?: Array<{ id: string; name: string; description: string }>,
+    onProgress?: (text: string) => void
   ): Promise<GeneratedRequirements> {
     const contextText = projectContext ? `\n\nProject Context:\n${projectContext}` : '';
     
@@ -649,7 +659,10 @@ Output as JSON with this structure:
 }`;
 
     console.log('[CLI Provider] Generating requirements...');
-    const response = await this.executeClaude(prompt, { timeout: 300000 });
+    const response = await this.executeClaude(prompt, { 
+      timeout: 300000,
+      onProgress: onProgress
+    });
 
     try {
       let requirements;
@@ -683,7 +696,8 @@ Output as JSON with this structure:
     requirements: GeneratedRequirements,
     projectContext?: string,
     architecture?: ProjectArchitecture,
-    relatedSpecs?: Array<{ id: string; name: string; description: string; design?: any }>
+    relatedSpecs?: Array<{ id: string; name: string; description: string; design?: any }>,
+    onProgress?: (text: string) => void
   ): Promise<GeneratedDesign> {
     const contextText = projectContext ? `\n\nProject Context:\n${projectContext}` : '';
     
@@ -712,7 +726,7 @@ Requirements:
 
 Generate a technical design including:
 1. Architecture - High-level architectural approach and patterns${architecture ? ' (must follow: ' + architecture.patterns.join(', ') + ')' : ''}
-2. Data Model - Database schema, data structures${architecture ? ' (extend: ' + architecture.dataModel.substring(0, 100) + ')' : ''}
+2. Data Model - Database schema, data structures${architecture && architecture.dataModel ? ' (extend: ' + architecture.dataModel.substring(0, 100) + ')' : ''}
 3. API Endpoints - REST/GraphQL endpoints needed (if applicable)
 4. UI Components - React/UI components needed (if applicable)
 
@@ -725,7 +739,10 @@ Output as JSON with this structure:
 }`;
 
     console.log('[CLI Provider] Generating design...');
-    const response = await this.executeClaude(prompt, { timeout: 300000 });
+    const response = await this.executeClaude(prompt, { 
+      timeout: 300000,
+      onProgress: onProgress
+    });
 
     try {
       let design;
@@ -759,7 +776,8 @@ Output as JSON with this structure:
     requirements: GeneratedRequirements,
     design: GeneratedDesign,
     architecture?: ProjectArchitecture,
-    relatedSpecs?: Array<{ id: string; name: string; status: string }>
+    relatedSpecs?: Array<{ id: string; name: string; status: string }>,
+    onProgress?: (text: string) => void
   ): Promise<GeneratedTask[]> {
     const architectureText = architecture ? `
 
@@ -801,7 +819,10 @@ Output as JSON array with this structure:
 ]`;
 
     console.log('[CLI Provider] Generating tasks...');
-    const response = await this.executeClaude(prompt, { timeout: 300000 });
+    const response = await this.executeClaude(prompt, { 
+      timeout: 300000,
+      onProgress: onProgress
+    });
 
     try {
       let tasks;

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, RotateCcw, Loader2, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { AlertDialog } from '@/components/ui/alert-dialog';
 
 interface TaskActionsProps {
   taskId: string;
@@ -14,6 +16,13 @@ export function TaskActions({ taskId, status }: TaskActionsProps) {
   const [isStarting, setIsStarting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const router = useRouter();
+  
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; description: string }>({
+    open: false,
+    title: '',
+    description: '',
+  });
 
   const handleStartTask = async () => {
     try {
@@ -25,25 +34,30 @@ export function TaskActions({ taskId, status }: TaskActionsProps) {
       const result = await response.json();
 
       if (!result.success) {
-        alert(`Failed to start task: ${result.error}`);
+        setAlertDialog({
+          open: true,
+          title: 'Error',
+          description: `Failed to start task: ${result.error}`,
+        });
         return;
       }
 
-      // Refresh the page to show updated status
-      router.refresh();
+      setTimeout(() => router.refresh(), 500);
     } catch (error) {
       console.error('Error starting task:', error);
-      alert('Failed to start task');
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: 'Failed to start task',
+      });
     } finally {
       setIsStarting(false);
     }
   };
 
-  const handleCancelTask = async () => {
-    if (!confirm('Are you sure you want to cancel this task?')) {
-      return;
-    }
-
+  const confirmCancelTask = async () => {
+    setShowCancelConfirm(false);
+    
     try {
       setIsCancelling(true);
       const response = await fetch(`/api/tasks/${taskId}/cancel`, {
@@ -53,15 +67,22 @@ export function TaskActions({ taskId, status }: TaskActionsProps) {
       const result = await response.json();
 
       if (!result.success) {
-        alert(`Failed to cancel task: ${result.error}`);
+        setAlertDialog({
+          open: true,
+          title: 'Error',
+          description: `Failed to cancel task: ${result.error}`,
+        });
         return;
       }
 
-      // Refresh the page to show updated status
-      router.refresh();
+      setTimeout(() => router.refresh(), 500);
     } catch (error) {
       console.error('Error cancelling task:', error);
-      alert('Failed to cancel task');
+      setAlertDialog({
+        open: true,
+        title: 'Error',
+        description: 'Failed to cancel task',
+      });
     } finally {
       setIsCancelling(false);
     }
@@ -96,7 +117,7 @@ export function TaskActions({ taskId, status }: TaskActionsProps) {
       {isRunning && (
         <>
           <Button
-            onClick={handleCancelTask}
+            onClick={() => setShowCancelConfirm(true)}
             variant="destructive"
             size="sm"
             disabled={isCancelling}
@@ -144,6 +165,24 @@ export function TaskActions({ taskId, status }: TaskActionsProps) {
           )}
         </Button>
       )}
+      
+      <ConfirmationDialog
+        open={showCancelConfirm}
+        onOpenChange={setShowCancelConfirm}
+        title="Cancel Task"
+        description="Are you sure you want to cancel this task?"
+        confirmLabel="Cancel Task"
+        variant="destructive"
+        onConfirm={confirmCancelTask}
+        loading={isCancelling}
+      />
+      
+      <AlertDialog
+        open={alertDialog.open}
+        onOpenChange={(open) => setAlertDialog({ ...alertDialog, open })}
+        title={alertDialog.title}
+        description={alertDialog.description}
+      />
     </div>
   );
 }

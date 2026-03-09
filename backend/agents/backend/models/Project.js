@@ -49,6 +49,30 @@ const ProjectSchema = new mongoose_1.Schema({
         required: true,
         index: true
     },
+    teamMembers: [{
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'User',
+            index: true
+        }],
+    workspacePath: {
+        type: String,
+        // Default will be set programmatically based on project name
+    },
+    architecture: {
+        techStack: {
+            frontend: [String],
+            backend: [String],
+            database: [String],
+            deployment: [String],
+        },
+        patterns: [String],
+        dataModel: String,
+        conventions: {
+            naming: String,
+            fileStructure: String,
+            codeStyle: String,
+        },
+    },
 }, {
     timestamps: true
 });
