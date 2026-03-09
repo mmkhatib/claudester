@@ -223,6 +223,38 @@ export function completeRecurringTaskAtomic(
   return { completed: completedTask, next: nextInstance };
 }
 
+/**
+ * Applies the same partial patch to multiple tasks in a single localStorage
+ * write. Tasks not found in the store are silently skipped.
+ *
+ * Designed for bulk recurrence operations (edit future / edit all) where we
+ * need to update many records atomically without multiple I/O round-trips.
+ *
+ * @param updates - Array of { id, patch } pairs to apply.
+ */
+export function bulkUpdateTasks(
+  updates: Array<{ id: string; patch: UpdateTaskInput }>,
+): void {
+  if (updates.length === 0) return;
+  const tasks = readTasks();
+  const now = new Date().toISOString();
+  const patchMap = new Map(updates.map(({ id, patch }) => [id, patch]));
+
+  const next = tasks.map((t) => {
+    const patch = patchMap.get(t.id);
+    if (!patch) return t;
+    return {
+      ...t,
+      ...patch,
+      id: t.id,           // immutable
+      createdAt: t.createdAt, // immutable
+      updatedAt: now,
+    };
+  });
+
+  writeTasks(next);
+}
+
 // ── List helpers (pass-through; lists are managed separately) ─────────────────
 
 /**

@@ -474,9 +474,12 @@ Be thorough but practical. Think through feature dependencies and integration po
         claudeProcess.stdout.on('data', (data) => {
           const content = data.toString();
           stdout += content;
+          
+          console.log('[CLI Provider] stdout chunk:', content.substring(0, 200));
 
           // Send progress update
           if (onProgress) {
+            console.log('[CLI Provider] Calling onProgress with stdout');
             onProgress({ type: 'stdout', content });
           }
 
