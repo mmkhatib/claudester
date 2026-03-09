@@ -73,10 +73,6 @@ export function TaskOutput({ taskId, initialOutput, status, workspacePath }: Tas
     }
   };
 
-  if (!output && !isRunning && fileChanges.length === 0) {
-    return null;
-  }
-
   return (
     <>
       {fileChanges.length > 0 && (

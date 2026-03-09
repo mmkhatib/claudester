@@ -208,10 +208,24 @@ class AgentSpawner {
     process: ChildProcess,
     taskId: string
   ): void {
+    let outputBuffer = '';
+
     // Handle stdout
-    process.stdout?.on('data', (data) => {
+    process.stdout?.on('data', async (data) => {
       const output = data.toString();
+      outputBuffer += output;
       loggers.agent.debug({ agentId, output }, 'Agent stdout');
+      
+      // Save to database
+      try {
+        await connectDB();
+        await Agent.findOneAndUpdate(
+          { agentId },
+          { $set: { output: outputBuffer } }
+        );
+      } catch (error) {
+        loggers.agent.error({ agentId, error }, 'Failed to save output');
+      }
       
       // Emit to WebSocket
       if (global.io) {
@@ -223,9 +237,21 @@ class AgentSpawner {
     });
 
     // Handle stderr
-    process.stderr?.on('data', (data) => {
+    process.stderr?.on('data', async (data) => {
       const error = data.toString();
+      outputBuffer += `[ERROR] ${error}`;
       loggers.agent.error({ agentId, error }, 'Agent stderr');
+      
+      // Save to database
+      try {
+        await connectDB();
+        await Agent.findOneAndUpdate(
+          { agentId },
+          { $set: { output: outputBuffer } }
+        );
+      } catch (error) {
+        loggers.agent.error({ agentId, error }, 'Failed to save error output');
+      }
       
       // Emit errors to WebSocket too
       if (global.io) {
