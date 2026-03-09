@@ -312,8 +312,8 @@ Please implement this task now using the file operation tools (list_directory, r
             
             // Emit to WebSocket
             if (global.io) {
-              global.io.to(`task:${taskId}`).emit('task:output', {
-                taskId,
+              global.io.to(`task:${task._id}`).emit('task:output', {
+                taskId: task._id.toString(),
                 output: progress.content,
               });
             }
@@ -322,8 +322,8 @@ Please implement this task now using the file operation tools (list_directory, r
             
             // Emit errors to WebSocket
             if (global.io) {
-              global.io.to(`task:${taskId}`).emit('task:output', {
-                taskId,
+              global.io.to(`task:${task._id}`).emit('task:output', {
+                taskId: task._id.toString(),
                 output: `[ERROR] ${progress.content}`,
               });
             }

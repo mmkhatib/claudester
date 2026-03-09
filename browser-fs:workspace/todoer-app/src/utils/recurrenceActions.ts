@@ -13,9 +13,15 @@
  * taskStore.ts.
  */
 
-import type { Task } from '../types';
+import type { Task, RecurrenceRule } from '../types';
 import { getNextDueDate } from './recurrenceEngine';
-import { completeRecurringTaskAtomic } from '../store/taskStore';
+import {
+  completeRecurringTaskAtomic,
+  updateTask,
+  updateFutureTasksInSeries,
+  updateAllTasksInSeries,
+  deleteFutureTasksInSeries,
+} from '../store/taskStore';
 
 // ── UUID helper ─────────────────────────────────────────────────────────────────
 
@@ -130,6 +136,156 @@ export function generateNextInstance(completedTask: Task): Task {
  * @returns An object with the persisted `completed` task and `next` instance,
  *   or `null` if the task is not recurring (no-op case).
  */
+// ── Edit / remove actions ────────────────────────────────────────────────────
+
+/**
+ * Patch type for task edits: all fields except id and timestamps are mutable.
+ */
+export type TaskEditPatch = Partial<
+  Pick<Task, 'title' | 'notes' | 'dueDate' | 'listId' | 'isRecurring' | 'recurrenceRule' | 'seriesId' | 'seriesAnchorDate'>
+>;
+
+/**
+ * Edits only this occurrence, detaching it from the recurrence series.
+ *
+ * The task is severed from the series (seriesId=null, isRecurring=false,
+ * recurrenceRule=null) and the supplied patch is applied. Future instances
+ * in the original series are unaffected.
+ *
+ * @param task - The task instance to detach and edit.
+ * @param patch - Field changes to apply to this occurrence.
+ * @returns The updated (detached) task.
+ */
+export function editOccurrence(task: Task, patch: TaskEditPatch): Task {
+  return updateTask(task.id, {
+    ...patch,
+    seriesId: null,
+    isRecurring: false,
+    recurrenceRule: null,
+    seriesAnchorDate: null,
+  });
+}
+
+/**
+ * Edits this occurrence and all future uncompleted occurrences in the series.
+ *
+ * Only tasks with dueDate >= task.dueDate and completed=false are affected.
+ * Completed past instances are immutable and are not touched.
+ *
+ * @param task - The pivot task (the one the user is editing).
+ * @param patch - Field changes to propagate forward through the series.
+ * @returns Array of updated tasks (including the pivot).
+ */
+export function editFutureOccurrences(task: Task, patch: TaskEditPatch): Task[] {
+  if (!task.seriesId || !task.dueDate) {
+    // Fallback: treat as single-occurrence edit if series info is missing.
+    return [editOccurrence(task, patch)];
+  }
+  return updateFutureTasksInSeries(task.seriesId, task.dueDate, patch);
+}
+
+/**
+ * Edits every task in the series, including completed past instances.
+ *
+ * Use with care — this mutates historical records. Appropriate for title/notes
+ * changes where the user wants consistency across the entire series.
+ *
+ * @param task - Any task in the series (used to look up seriesId).
+ * @param patch - Field changes to apply to all occurrences.
+ * @returns Array of all updated tasks in the series.
+ */
+export function editAllOccurrences(task: Task, patch: TaskEditPatch): Task[] {
+  if (!task.seriesId) {
+    return [editOccurrence(task, patch)];
+  }
+  return updateAllTasksInSeries(task.seriesId, patch);
+}
+
+/**
+ * Removes recurrence from a task, converting it to a one-time task.
+ *
+ * The current instance is updated to isRecurring=false with recurrenceRule=null
+ * and is detached from the series. All future uncompleted instances in the
+ * series are deleted. Completed past instances are preserved.
+ *
+ * @param task - Any task instance in the series to remove recurrence from.
+ * @returns The updated (now non-recurring) task.
+ */
+export function removeRecurrence(task: Task): Task {
+  if (task.seriesId && task.dueDate) {
+    // Delete all future uncompleted instances (excluding this one temporarily
+    // so we can update it last without a double-write).
+    const futureDueDate = task.dueDate;
+    // Remove future instances that are NOT this task itself.
+    deleteFutureTasksInSeries(task.seriesId, futureDueDate);
+  }
+
+  return updateTask(task.id, {
+    isRecurring: false,
+    recurrenceRule: null,
+    seriesId: null,
+    seriesAnchorDate: null,
+  });
+}
+
+/**
+ * Converts a non-recurring task into the first instance of a new series, or
+ * updates the recurrence rule of an existing series based on the given scope.
+ *
+ * This is a helper used by the edit form when the user changes recurrence
+ * settings on an already-persisted task.
+ *
+ * @param task       - The task being edited.
+ * @param rule       - The new recurrence rule (null to remove recurrence).
+ * @param scope      - 'this' | 'future' | 'all'
+ * @param seriesId   - New seriesId to use (caller-generated if needed).
+ */
+export function applyRecurrenceRuleChange(
+  task: Task,
+  rule: RecurrenceRule | null,
+  scope: 'this' | 'future' | 'all',
+  seriesId: string,
+): Task | Task[] {
+  if (rule === null) {
+    // Removing recurrence
+    if (scope === 'this') {
+      return editOccurrence(task, { isRecurring: false, recurrenceRule: null });
+    }
+    // 'future' or 'all' — remove recurrence from applicable instances
+    if (scope === 'all' && task.seriesId) {
+      return updateAllTasksInSeries(task.seriesId, {
+        isRecurring: false,
+        recurrenceRule: null,
+        seriesId: null,
+        seriesAnchorDate: null,
+      });
+    }
+    // 'future'
+    return removeRecurrence(task);
+  }
+
+  // Setting or changing a recurrence rule
+  const patch: TaskEditPatch = {
+    isRecurring: true,
+    recurrenceRule: rule,
+    seriesId,
+    seriesAnchorDate: task.dueDate ?? task.seriesAnchorDate,
+  };
+
+  if (scope === 'this') {
+    return updateTask(task.id, patch);
+  }
+  if (scope === 'future' && task.seriesId && task.dueDate) {
+    return updateFutureTasksInSeries(task.seriesId, task.dueDate, patch);
+  }
+  if (scope === 'all' && task.seriesId) {
+    return updateAllTasksInSeries(task.seriesId, patch);
+  }
+
+  // Fallback: no series yet — just update this task
+  return updateTask(task.id, patch);
+}
+
 export function onRecurringTaskComplete(
   task: Task,
 ): { completed: Task; next: Task } | null {

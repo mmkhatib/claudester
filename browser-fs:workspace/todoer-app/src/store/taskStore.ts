@@ -255,6 +255,68 @@ export function bulkUpdateTasks(
   writeTasks(next);
 }
 
+/**
+ * Applies a patch to all uncompleted tasks in a series with dueDate >= fromDate.
+ * Single localStorage write. Returns the patched task records.
+ */
+export function updateFutureTasksInSeries(
+  seriesId: string,
+  fromDate: string,
+  patch: UpdateTaskInput,
+): Task[] {
+  const tasks = readTasks();
+  const now = new Date().toISOString();
+  const patched: Task[] = [];
+
+  const next = tasks.map((t) => {
+    if (t.seriesId === seriesId && !t.completed && t.dueDate != null && t.dueDate >= fromDate) {
+      const updated: Task = { ...t, ...patch, id: t.id, createdAt: t.createdAt, updatedAt: now };
+      patched.push(updated);
+      return updated;
+    }
+    return t;
+  });
+
+  writeTasks(next);
+  return patched;
+}
+
+/**
+ * Applies a patch to every task sharing the given seriesId (completed and
+ * uncompleted alike). Single localStorage write. Returns the patched records.
+ */
+export function updateAllTasksInSeries(seriesId: string, patch: UpdateTaskInput): Task[] {
+  const tasks = readTasks();
+  const now = new Date().toISOString();
+  const patched: Task[] = [];
+
+  const next = tasks.map((t) => {
+    if (t.seriesId === seriesId) {
+      const updated: Task = { ...t, ...patch, id: t.id, createdAt: t.createdAt, updatedAt: now };
+      patched.push(updated);
+      return updated;
+    }
+    return t;
+  });
+
+  writeTasks(next);
+  return patched;
+}
+
+/**
+ * Removes all uncompleted tasks in a series with dueDate >= fromDate.
+ * Completed past instances are preserved.
+ */
+export function deleteFutureTasksInSeries(seriesId: string, fromDate: string): void {
+  const tasks = readTasks();
+  writeTasks(
+    tasks.filter(
+      (t) =>
+        !(t.seriesId === seriesId && !t.completed && t.dueDate != null && t.dueDate >= fromDate),
+    ),
+  );
+}
+
 // ── List helpers (pass-through; lists are managed separately) ─────────────────
 
 /**
