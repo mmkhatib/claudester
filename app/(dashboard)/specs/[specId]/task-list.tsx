@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Clock, Play, PlayCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AlertDialog } from '@/components/ui/alert-dialog';
+import { ProgressModal } from '@/components/ui/progress-modal';
+import { io, Socket } from 'socket.io-client';
 
 interface Task {
   _id: string;
@@ -26,6 +28,10 @@ export function TaskList({ tasks, specId }: TaskListProps) {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [isStarting, setIsStarting] = useState(false);
   const [startingTaskId, setStartingTaskId] = useState<string | null>(null);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [taskOutput, setTaskOutput] = useState<string>('');
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const router = useRouter();
   
   const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; description: string }>({
@@ -33,6 +39,22 @@ export function TaskList({ tasks, specId }: TaskListProps) {
     title: '',
     description: '',
   });
+
+  useEffect(() => {
+    const socketInstance = io({
+      path: '/api/socketio',
+    });
+
+    socketInstance.on('connect', () => {
+      console.log('WebSocket connected for task list');
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, []);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -55,6 +77,20 @@ export function TaskList({ tasks, specId }: TaskListProps) {
   const handleStartTask = async (taskId: string) => {
     try {
       setStartingTaskId(taskId);
+      setCurrentTaskId(taskId);
+      setTaskOutput('Starting task...\n');
+      setShowProgressModal(true);
+
+      // Join task room
+      if (socket) {
+        socket.emit('join:task', taskId);
+        socket.on('task:output', (data: { taskId: string; output: string }) => {
+          if (data.taskId === taskId) {
+            setTaskOutput(prev => prev + data.output);
+          }
+        });
+      }
+
       const response = await fetch(`/api/tasks/${taskId}/start`, {
         method: 'POST',
       });
@@ -62,27 +98,31 @@ export function TaskList({ tasks, specId }: TaskListProps) {
       const result = await response.json();
 
       if (!result.success) {
-        setAlertDialog({
-          open: true,
-          title: 'Error',
-          description: `Failed to start task: ${result.error}`,
-        });
+        setTaskOutput(prev => prev + `\n[ERROR] ${result.error}`);
+        setTimeout(() => {
+          setShowProgressModal(false);
+          setAlertDialog({
+            open: true,
+            title: 'Error',
+            description: `Failed to start task: ${result.error}`,
+          });
+        }, 2000);
         return;
       }
 
-      setAlertDialog({
-        open: true,
-        title: 'Success',
-        description: `Task started successfully! Agent ID: ${result.data.agent.agentId}`,
-      });
+      setTaskOutput(prev => prev + `\nTask started! Agent ID: ${result.data.agent?.agentId || 'N/A'}\n`);
       setTimeout(() => router.refresh(), 1500);
     } catch (error) {
       console.error('Error starting task:', error);
-      setAlertDialog({
-        open: true,
-        title: 'Error',
-        description: 'Failed to start task',
-      });
+      setTaskOutput(prev => prev + `\n[ERROR] ${error}`);
+      setTimeout(() => {
+        setShowProgressModal(false);
+        setAlertDialog({
+          open: true,
+          title: 'Error',
+          description: 'Failed to start task',
+        });
+      }, 2000);
     } finally {
       setStartingTaskId(null);
     }
@@ -332,6 +372,14 @@ export function TaskList({ tasks, specId }: TaskListProps) {
         onOpenChange={(open) => setAlertDialog({ ...alertDialog, open })}
         title={alertDialog.title}
         description={alertDialog.description}
+      />
+
+      <ProgressModal
+        open={showProgressModal}
+        title="Task Execution"
+        description="Agent is working on the task... (You can dismiss and check task page for details)"
+        progress={[taskOutput]}
+        onDismiss={() => setShowProgressModal(false)}
       />
     </div>
   );
