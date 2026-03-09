@@ -5,6 +5,7 @@
 spec/
 mockups/
 .current-task
+chat.md
 
 # Dependencies
 node_modules/
