@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileCode, Maximize2, FilePlus, FileEdit, FileX, GitCommit } from 'lucide-react';
+import { FileCode, Maximize2, FilePlus, FileEdit, FileX, GitCommit, FolderOpen } from 'lucide-react';
 import { ProgressModal } from '@/components/ui/progress-modal';
 import { io, Socket } from 'socket.io-client';
 
@@ -24,6 +24,13 @@ export function TaskOutput({ taskId, initialOutput, status, workspacePath }: Tas
   const [showModal, setShowModal] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
+
+  useEffect(() => {
+    // Update output if initialOutput changes
+    if (initialOutput && initialOutput !== output) {
+      setOutput(initialOutput);
+    }
+  }, [initialOutput]);
 
   useEffect(() => {
     const socketInstance = io({
@@ -73,6 +80,14 @@ export function TaskOutput({ taskId, initialOutput, status, workspacePath }: Tas
     }
   };
 
+  const openWorkspace = () => {
+    if (workspacePath) {
+      // Copy path to clipboard
+      navigator.clipboard.writeText(workspacePath);
+      alert(`Workspace path copied to clipboard:\n${workspacePath}`);
+    }
+  };
+
   return (
     <>
       {fileChanges.length > 0 && (
@@ -103,30 +118,51 @@ export function TaskOutput({ taskId, initialOutput, status, workspacePath }: Tas
         </Card>
       )}
 
-      {(output || isRunning) && (
+      {output && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FileCode className="h-5 w-5" />
-                Code Output
+                Generated Code Summary
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowModal(true)}
-              >
-                <Maximize2 className="h-4 w-4 mr-2" />
-                View Full Screen
-              </Button>
+              <div className="flex gap-2">
+                {workspacePath && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openWorkspace}
+                  >
+                    <FolderOpen className="h-4 w-4 mr-2" />
+                    Copy Path
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowModal(true)}
+                >
+                  <Maximize2 className="h-4 w-4 mr-2" />
+                  View Full Screen
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 max-h-[400px] overflow-auto">
               <pre className="text-sm whitespace-pre-wrap font-mono">
-                {output || 'Waiting for output...'}
+                {output}
               </pre>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!output && !isRunning && (
+        <Card>
+          <CardContent className="py-8 text-center text-zinc-500">
+            <FileCode className="h-12 w-12 mx-auto mb-2 opacity-50" />
+            <p>No code output available for this task</p>
           </CardContent>
         </Card>
       )}
@@ -134,7 +170,7 @@ export function TaskOutput({ taskId, initialOutput, status, workspacePath }: Tas
       <ProgressModal
         open={showModal}
         title="Task Code Output"
-        description={isRunning ? "Live code generation (updates in real-time)" : "Generated code"}
+        description={isRunning ? "Live code generation (updates in real-time)" : "Generated code summary"}
         progress={[output || 'No output yet']}
         onDismiss={() => setShowModal(false)}
       />

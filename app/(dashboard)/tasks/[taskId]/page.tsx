@@ -235,7 +235,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
       {/* Task Output - Live Streaming */}
       <TaskOutput 
         taskId={params.taskId} 
-        initialOutput={agent?.output || task.result?.output}
+        initialOutput={task.output || agent?.output}
         status={task.status}
         workspacePath={agent?.workspacePath}
       />
