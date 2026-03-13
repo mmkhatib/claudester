@@ -412,24 +412,6 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
         <RotateCcw className="h-4 w-4 mr-2" />
         Reset
       </Button>
-
-      {hasRequirements && (
-        <Button 
-          variant="outline"
-          onClick={handleViewRequirements}
-        >
-          View Requirements
-        </Button>
-      )}
-
-      {hasDesign && (
-        <Button 
-          variant="outline"
-          onClick={handleViewDesign}
-        >
-          View Design
-        </Button>
-      )}
       
       {showGenerateRequirements && (
         <Button

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, Play, PlayCircle, Loader2 } from 'lucide-react';
+import { Clock, Play, PlayCircle, Loader2, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AlertDialog } from '@/components/ui/alert-dialog';
 import { ProgressModal } from '@/components/ui/progress-modal';
@@ -336,6 +336,19 @@ export function TaskList({ tasks, specId }: TaskListProps) {
                   <Badge className={getStatusColor(task.status)}>
                     {task.status}
                   </Badge>
+                  {task.status === 'COMPLETED' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/tasks/${task._id}`);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View Output
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"

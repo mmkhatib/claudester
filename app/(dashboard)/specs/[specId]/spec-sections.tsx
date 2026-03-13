@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { Badge } from '@/components/ui/badge';
-import { CheckSquare, FileText, CheckCircle2, Circle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CheckSquare, FileText, CheckCircle2, Circle, Loader2, Eye } from 'lucide-react';
 import { TaskList } from './task-list';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSpecLoading } from './spec-loading-context';
+import { ProgressModal } from '@/components/ui/progress-modal';
 import 'github-markdown-css/github-markdown.css';
 
 interface SpecSectionsProps {
@@ -65,11 +68,38 @@ function generateTasksSummary(tasks: any[]): string {
 
 export function SpecSections({ spec, tasks }: SpecSectionsProps) {
   const { isGeneratingRequirements, isGeneratingDesign, isGeneratingTasks } = useSpecLoading();
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewContent, setViewContent] = useState('');
+  const [viewTitle, setViewTitle] = useState('');
+  
   const hasRequirements = spec.requirements && Object.keys(spec.requirements).length > 0;
   const hasDesign = !!spec.design;
   const hasTasks = tasks.length > 0;
 
+  const handleViewRequirements = () => {
+    if (spec.requirements) {
+      const reqText = typeof spec.requirements === 'string' 
+        ? spec.requirements 
+        : JSON.stringify(spec.requirements, null, 2);
+      setViewContent(reqText);
+      setViewTitle('Requirements');
+      setShowViewModal(true);
+    }
+  };
+
+  const handleViewDesign = () => {
+    if (spec.design) {
+      const designText = typeof spec.design === 'string' 
+        ? spec.design 
+        : JSON.stringify(spec.design, null, 2);
+      setViewContent(designText);
+      setViewTitle('Design');
+      setShowViewModal(true);
+    }
+  };
+
   return (
+    <>
     <div className="grid grid-cols-1 gap-6">
       {/* Requirements */}
       <CollapsibleSection
@@ -95,6 +125,12 @@ export function SpecSections({ spec, tasks }: SpecSectionsProps) {
           </div>
         ) : spec.requirements && Object.keys(spec.requirements).length > 0 ? (
           <div className="space-y-6">
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={handleViewRequirements}>
+                <Eye className="h-4 w-4 mr-2" />
+                View Full Requirements
+              </Button>
+            </div>
             {Object.entries(spec.requirements).map(([key, value]: [string, any]) => {
               const items = Array.isArray(value) ? value : [value];
               return (
@@ -155,6 +191,12 @@ export function SpecSections({ spec, tasks }: SpecSectionsProps) {
           </div>
         ) : spec.design ? (
           <div className="space-y-6">
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={handleViewDesign}>
+                <Eye className="h-4 w-4 mr-2" />
+                View Full Design
+              </Button>
+            </div>
             {typeof spec.design === 'object' ? (
               <>
                 {spec.design.architecture && (
@@ -267,5 +309,14 @@ export function SpecSections({ spec, tasks }: SpecSectionsProps) {
         )}
       </CollapsibleSection>
     </div>
+
+    <ProgressModal
+      open={showViewModal}
+      title={viewTitle}
+      description="Generated content from AI"
+      progress={[viewContent]}
+      onDismiss={() => setShowViewModal(false)}
+    />
+    </>
   );
 }
