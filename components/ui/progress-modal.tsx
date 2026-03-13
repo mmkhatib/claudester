@@ -46,21 +46,38 @@ export function ProgressModal({
         </DialogHeader>
         {progress.length > 0 && (
           <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
-            {progress.map((msg, idx) => (
-              <div key={idx}>
-                <ReactMarkdown
-                  components={{
-                    code: ({ node, inline, ...props }) => (
-                      inline ? 
-                        <code className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded" {...props} /> :
-                        <code className="block bg-gray-100 dark:bg-gray-800 p-2 rounded" {...props} />
-                    ),
-                  }}
-                >
-                  {msg}
-                </ReactMarkdown>
-              </div>
-            ))}
+            {progress.map((msg, idx) => {
+              // Auto-wrap code-like identifiers (camelCase, PascalCase, snake_case) with backticks
+              const formattedMsg = msg.replace(
+                /\b([a-z][a-zA-Z0-9]*|[A-Z][a-zA-Z0-9]*|[a-z_][a-z0-9_]*)\b(?![`])/g,
+                (match) => {
+                  // Don't wrap common words, only code-like identifiers
+                  const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'all', 'each', 'every', 'some', 'any', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very'];
+                  if (commonWords.includes(match.toLowerCase())) return match;
+                  // Wrap if it looks like code (has camelCase, PascalCase, or underscores)
+                  if (/[A-Z]/.test(match) || /_/.test(match) || /^[a-z]+[A-Z]/.test(match)) {
+                    return `\`${match}\``;
+                  }
+                  return match;
+                }
+              );
+              
+              return (
+                <div key={idx}>
+                  <ReactMarkdown
+                    components={{
+                      code: ({ node, inline, ...props }) => (
+                        inline ? 
+                          <code className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded text-xs font-mono" {...props} /> :
+                          <code className="block bg-zinc-900 text-zinc-100 p-3 rounded text-sm font-mono overflow-x-auto" {...props} />
+                      ),
+                    }}
+                  >
+                    {formattedMsg}
+                  </ReactMarkdown>
+                </div>
+              );
+            })}
           </div>
         )}
       </DialogContent>
