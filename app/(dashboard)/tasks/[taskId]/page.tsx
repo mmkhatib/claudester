@@ -253,9 +253,29 @@ export default async function TaskDetailPage({ params }: PageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="p-3 rounded bg-zinc-100 dark:bg-zinc-900 font-mono text-sm">
-              {agent.workspacePath}
-            </div>
+            {agent.workspacePath.startsWith('browser-fs:') ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900">
+                  <p className="text-sm text-orange-800 dark:text-orange-300 font-medium mb-1">
+                    ⚠️ Virtual Filesystem
+                  </p>
+                  <p className="text-sm text-orange-700 dark:text-orange-400">
+                    This project uses Claude's virtual filesystem. Files are not saved to your actual disk.
+                    To see generated files, recreate the project with a real workspace path like:
+                  </p>
+                  <code className="block mt-2 p-2 rounded bg-orange-100 dark:bg-orange-900/30 text-xs">
+                    /Users/overlord/workspace/projects/your-project-name
+                  </code>
+                </div>
+                <div className="p-3 rounded bg-zinc-100 dark:bg-zinc-900 font-mono text-sm">
+                  {agent.workspacePath}
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded bg-zinc-100 dark:bg-zinc-900 font-mono text-sm">
+                {agent.workspacePath}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
