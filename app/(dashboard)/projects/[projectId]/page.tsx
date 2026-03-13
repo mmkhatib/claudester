@@ -254,7 +254,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="font-medium">{spec.name || spec.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono text-zinc-500 dark:text-zinc-400">
+                          #{String(spec.specNumber || 0).padStart(3, '0')}
+                        </span>
+                        <h3 className="font-medium">{spec.name || spec.title}</h3>
+                      </div>
                       <p className="text-sm text-zinc-500 mt-1 flex items-center">
                         <Clock className="h-3.5 w-3.5 mr-1" />
                         Updated {spec.updatedAt ? getRelativeTime(spec.updatedAt) : 'recently'}
