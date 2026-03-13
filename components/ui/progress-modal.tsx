@@ -45,30 +45,28 @@ export function ProgressModal({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         {progress.length > 0 && (
-          <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto">
+          <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
             {progress.map((msg, idx) => {
               // Replace single newlines with spaces, keep double newlines as paragraph breaks
               const normalizedMsg = msg.replace(/([^\n])\n([^\n])/g, '$1 $2');
               
-              // Split by double newlines for paragraphs
-              const paragraphs = normalizedMsg.split('\n\n');
-              
               return (
-                <div key={idx} className="text-sm text-zinc-300 leading-relaxed">
-                  {paragraphs.map((para, pIdx) => {
-                    // Only wrap file paths and specific patterns as code
-                    const withCode = para
-                      // File paths
-                      .replace(/([\/\w\-\.]+\.(ts|tsx|js|jsx|json|md|css|html))/g, '<code class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 rounded text-xs font-mono">$1</code>')
-                      // camelCase/PascalCase function names followed by ()
-                      .replace(/\b([a-z][a-zA-Z0-9]*|[A-Z][a-zA-Z0-9]*)\(\)/g, '<code class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 rounded text-xs font-mono">$1()</code>')
-                      // Type annotations like ExportedTask[], Map<string, string>
-                      .replace(/\b([A-Z][a-zA-Z0-9]*(?:\[\]|<[^>]+>)?)\b/g, '<code class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 rounded text-xs font-mono">$1</code>');
-                    
-                    return (
-                      <p key={pIdx} className="mb-3" dangerouslySetInnerHTML={{ __html: withCode }} />
-                    );
-                  })}
+                <div key={idx}>
+                  <ReactMarkdown
+                    components={{
+                      code: ({ node, inline, ...props }) => (
+                        inline ? 
+                          <code className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 rounded text-xs font-mono whitespace-nowrap" {...props} /> :
+                          <code className="block bg-zinc-900 text-zinc-100 p-3 rounded text-sm font-mono overflow-x-auto my-2" {...props} />
+                      ),
+                      p: ({ node, ...props }) => <p className="my-2" {...props} />,
+                      h1: ({ node, ...props }) => <h1 className="text-xl font-bold mt-4 mb-2" {...props} />,
+                      h2: ({ node, ...props }) => <h2 className="text-lg font-bold mt-3 mb-2" {...props} />,
+                      h3: ({ node, ...props }) => <h3 className="text-base font-bold mt-2 mb-1" {...props} />,
+                    }}
+                  >
+                    {normalizedMsg}
+                  </ReactMarkdown>
                 </div>
               );
             })}
