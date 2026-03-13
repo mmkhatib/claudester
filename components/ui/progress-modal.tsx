@@ -47,8 +47,11 @@ export function ProgressModal({
         {progress.length > 0 && (
           <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
             {progress.map((msg, idx) => {
+              // Replace single newlines with spaces, keep double newlines as paragraph breaks
+              const normalizedMsg = msg.replace(/([^\n])\n([^\n])/g, '$1 $2');
+              
               // Auto-wrap code-like identifiers (camelCase, PascalCase, snake_case) with backticks
-              const formattedMsg = msg.replace(
+              const formattedMsg = normalizedMsg.replace(
                 /\b([a-z][a-zA-Z0-9]*|[A-Z][a-zA-Z0-9]*|[a-z_][a-z0-9_]*)\b(?![`])/g,
                 (match) => {
                   // Don't wrap common words, only code-like identifiers
