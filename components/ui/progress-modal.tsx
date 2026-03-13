@@ -45,39 +45,51 @@ export function ProgressModal({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         {progress.length > 0 && (
-          <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
+          <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto">
             {progress.map((msg, idx) => {
               // Replace single newlines with spaces, keep double newlines as paragraph breaks
               const normalizedMsg = msg.replace(/([^\n])\n([^\n])/g, '$1 $2');
               
-              // Auto-wrap code-like identifiers (camelCase, PascalCase, snake_case) with backticks
-              const formattedMsg = normalizedMsg.replace(
-                /\b([a-z][a-zA-Z0-9]*|[A-Z][a-zA-Z0-9]*|[a-z_][a-z0-9_]*)\b(?![`])/g,
-                (match) => {
-                  // Don't wrap common words, only code-like identifiers
-                  const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'all', 'each', 'every', 'some', 'any', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very'];
-                  if (commonWords.includes(match.toLowerCase())) return match;
-                  // Wrap if it looks like code (has camelCase, PascalCase, or underscores)
-                  if (/[A-Z]/.test(match) || /_/.test(match) || /^[a-z]+[A-Z]/.test(match)) {
-                    return `\`${match}\``;
-                  }
-                  return match;
-                }
-              );
+              // Split by double newlines for paragraphs
+              const paragraphs = normalizedMsg.split('\n\n');
               
               return (
-                <div key={idx}>
-                  <ReactMarkdown
-                    components={{
-                      code: ({ node, inline, ...props }) => (
-                        inline ? 
-                          <code className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded text-xs font-mono" {...props} /> :
-                          <code className="block bg-zinc-900 text-zinc-100 p-3 rounded text-sm font-mono overflow-x-auto" {...props} />
-                      ),
-                    }}
-                  >
-                    {formattedMsg}
-                  </ReactMarkdown>
+                <div key={idx} className="prose prose-sm dark:prose-invert max-w-none">
+                  {paragraphs.map((para, pIdx) => {
+                    // Wrap code-like identifiers with <code> tags
+                    const parts = para.split(/(`[^`]+`)/g);
+                    
+                    return (
+                      <p key={pIdx} className="mb-2">
+                        {parts.map((part, partIdx) => {
+                          if (part.startsWith('`') && part.endsWith('`')) {
+                            // Already has backticks
+                            const code = part.slice(1, -1);
+                            return (
+                              <code key={partIdx} className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded text-xs font-mono">
+                                {code}
+                              </code>
+                            );
+                          }
+                          
+                          // Auto-detect code identifiers and wrap them
+                          const withCode = part.replace(
+                            /\b([a-z][a-zA-Z0-9]*|[A-Z][a-zA-Z0-9]*|[a-z_][a-z0-9_]*)\b/g,
+                            (match) => {
+                              const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'all', 'each', 'every', 'some', 'any', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'this', 'that', 'these', 'those'];
+                              if (commonWords.includes(match.toLowerCase())) return match;
+                              if (/[A-Z]/.test(match) || /_/.test(match)) {
+                                return `<code class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded text-xs font-mono">${match}</code>`;
+                              }
+                              return match;
+                            }
+                          );
+                          
+                          return <span key={partIdx} dangerouslySetInnerHTML={{ __html: withCode }} />;
+                        })}
+                      </p>
+                    );
+                  })}
                 </div>
               );
             })}
