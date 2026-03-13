@@ -72,9 +72,12 @@ function getRelativeTime(date: Date): string {
 export default async function SpecsPage() {
   const specs = await getSpecs();
 
+  // Sort specs by specNumber ascending
+  const sortedSpecs = specs.sort((a: any, b: any) => (a.specNumber || 0) - (b.specNumber || 0));
+
   // Fetch project data and tasks for all specs in parallel
   const specsWithData = await Promise.all(
-    specs.map(async (spec: any) => {
+    sortedSpecs.map(async (spec: any) => {
       const [project, tasks] = await Promise.all([
         spec.projectId ? getProject(spec.projectId) : null,
         getTasks(spec._id)
@@ -188,6 +191,9 @@ export default async function SpecsPage() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <FileText className="h-5 w-5 text-zinc-400" />
+                        <span className="text-sm font-mono text-zinc-500 dark:text-zinc-400">
+                          #{String(spec.specNumber || 0).padStart(3, '0')}
+                        </span>
                         <h3 className="text-lg font-semibold">{spec.title}</h3>
                       </div>
                       <p className="text-zinc-600 dark:text-zinc-400 mb-3">

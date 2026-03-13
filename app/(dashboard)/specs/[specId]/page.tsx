@@ -126,6 +126,9 @@ export default async function SpecDetailPage({ params }: PageProps) {
         <div className="flex-1">
           <div className="flex items-center space-x-3 mb-2">
             <FileText className="h-8 w-8 text-zinc-400" />
+            <span className="text-lg font-mono text-zinc-500 dark:text-zinc-400">
+              #{String(spec.specNumber || 0).padStart(3, '0')}
+            </span>
             <h1 className="text-3xl font-bold">{spec.title}</h1>
           </div>
           <div className="text-zinc-600 dark:text-zinc-400 mt-2 markdown-body bg-transparent">
