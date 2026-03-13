@@ -45,28 +45,20 @@ export function ProgressModal({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         {progress.length > 0 && (
-          <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto">
+          <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
             {progress.map((msg, idx) => (
-              <div key={idx} className="prose prose-sm dark:prose-invert max-w-none">
-                {msg.includes('```') || msg.includes('##') || msg.includes('**') ? (
-                  // Render as markdown if it contains markdown syntax
-                  <ReactMarkdown
-                    components={{
-                      code: ({ node, inline, ...props }) => (
-                        inline ? 
-                          <code className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded text-xs" {...props} /> :
-                          <code className="block bg-zinc-900 text-zinc-100 p-3 rounded text-xs font-mono overflow-x-auto" {...props} />
-                      ),
-                    }}
-                  >
-                    {msg}
-                  </ReactMarkdown>
-                ) : (
-                  // Render as preformatted text to preserve formatting
-                  <pre className="whitespace-pre-wrap font-mono text-xs bg-zinc-50 dark:bg-zinc-900 p-3 rounded border border-zinc-200 dark:border-zinc-800">
-                    {msg}
-                  </pre>
-                )}
+              <div key={idx}>
+                <ReactMarkdown
+                  components={{
+                    code: ({ node, inline, ...props }) => (
+                      inline ? 
+                        <code className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded" {...props} /> :
+                        <code className="block bg-gray-100 dark:bg-gray-800 p-2 rounded" {...props} />
+                    ),
+                  }}
+                >
+                  {msg}
+                </ReactMarkdown>
               </div>
             ))}
           </div>
