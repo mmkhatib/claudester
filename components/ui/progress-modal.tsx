@@ -54,40 +54,19 @@ export function ProgressModal({
               const paragraphs = normalizedMsg.split('\n\n');
               
               return (
-                <div key={idx} className="prose prose-sm dark:prose-invert max-w-none">
+                <div key={idx} className="text-sm text-zinc-300 leading-relaxed">
                   {paragraphs.map((para, pIdx) => {
-                    // Wrap code-like identifiers with <code> tags
-                    const parts = para.split(/(`[^`]+`)/g);
+                    // Only wrap file paths and specific patterns as code
+                    const withCode = para
+                      // File paths
+                      .replace(/([\/\w\-\.]+\.(ts|tsx|js|jsx|json|md|css|html))/g, '<code class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 rounded text-xs font-mono">$1</code>')
+                      // camelCase/PascalCase function names followed by ()
+                      .replace(/\b([a-z][a-zA-Z0-9]*|[A-Z][a-zA-Z0-9]*)\(\)/g, '<code class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 rounded text-xs font-mono">$1()</code>')
+                      // Type annotations like ExportedTask[], Map<string, string>
+                      .replace(/\b([A-Z][a-zA-Z0-9]*(?:\[\]|<[^>]+>)?)\b/g, '<code class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 rounded text-xs font-mono">$1</code>');
                     
                     return (
-                      <p key={pIdx} className="mb-2">
-                        {parts.map((part, partIdx) => {
-                          if (part.startsWith('`') && part.endsWith('`')) {
-                            // Already has backticks
-                            const code = part.slice(1, -1);
-                            return (
-                              <code key={partIdx} className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded text-xs font-mono">
-                                {code}
-                              </code>
-                            );
-                          }
-                          
-                          // Auto-detect code identifiers and wrap them
-                          const withCode = part.replace(
-                            /\b([a-z][a-zA-Z0-9]*|[A-Z][a-zA-Z0-9]*|[a-z_][a-z0-9_]*)\b/g,
-                            (match) => {
-                              const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'all', 'each', 'every', 'some', 'any', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'this', 'that', 'these', 'those'];
-                              if (commonWords.includes(match.toLowerCase())) return match;
-                              if (/[A-Z]/.test(match) || /_/.test(match)) {
-                                return `<code class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded text-xs font-mono">${match}</code>`;
-                              }
-                              return match;
-                            }
-                          );
-                          
-                          return <span key={partIdx} dangerouslySetInnerHTML={{ __html: withCode }} />;
-                        })}
-                      </p>
+                      <p key={pIdx} className="mb-3" dangerouslySetInnerHTML={{ __html: withCode }} />
                     );
                   })}
                 </div>
