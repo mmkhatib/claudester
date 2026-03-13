@@ -47,8 +47,10 @@ export function ProgressModal({
         {progress.length > 0 && (
           <div ref={scrollRef} className="mt-4 max-h-[70vh] overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
             {progress.map((msg, idx) => {
-              // Replace single newlines with spaces, keep double newlines as paragraph breaks
-              const normalizedMsg = msg.replace(/([^\n])\n([^\n])/g, '$1 $2');
+              // Preserve newlines after markdown headers, collapse other single newlines
+              const normalizedMsg = msg
+                .replace(/^(#{1,6}\s+.+)$/gm, '$1\n\n') // Add double newline after headers
+                .replace(/([^\n#])\n([^\n#])/g, '$1 $2'); // Collapse single newlines (except after headers)
               
               return (
                 <div key={idx}>
