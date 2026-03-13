@@ -404,6 +404,40 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
     }
   };
 
+  const handleViewRequirements = async () => {
+    try {
+      const res = await fetch(`/api/specs/${specId}`);
+      const data = await res.json();
+      if (data.data?.requirements) {
+        const reqText = typeof data.data.requirements === 'string' 
+          ? data.data.requirements 
+          : JSON.stringify(data.data.requirements, null, 2);
+        setViewOutputContent(reqText);
+        setViewOutputTitle('Requirements');
+        setShowViewOutputModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading requirements:', error);
+    }
+  };
+
+  const handleViewDesign = async () => {
+    try {
+      const res = await fetch(`/api/specs/${specId}`);
+      const data = await res.json();
+      if (data.data?.design) {
+        const designText = typeof data.data.design === 'string' 
+          ? data.data.design 
+          : JSON.stringify(data.data.design, null, 2);
+        setViewOutputContent(designText);
+        setViewOutputTitle('Design');
+        setShowViewOutputModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading design:', error);
+    }
+  };
+
   return (
     <>
       <div className="flex items-center space-x-2">
@@ -422,6 +456,24 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
         <RotateCcw className="h-4 w-4 mr-2" />
         Reset
       </Button>
+
+      {hasRequirements && (
+        <Button 
+          variant="outline"
+          onClick={handleViewRequirements}
+        >
+          View Requirements
+        </Button>
+      )}
+
+      {hasDesign && (
+        <Button 
+          variant="outline"
+          onClick={handleViewDesign}
+        >
+          View Design
+        </Button>
+      )}
       
       {showGenerateRequirements && (
         <Button
