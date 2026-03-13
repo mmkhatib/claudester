@@ -32,6 +32,9 @@ export function TaskList({ tasks, specId }: TaskListProps) {
   const [taskOutput, setTaskOutput] = useState<string>('');
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [showViewOutputModal, setShowViewOutputModal] = useState(false);
+  const [viewOutputContent, setViewOutputContent] = useState<string>('');
+  const [viewOutputTitle, setViewOutputTitle] = useState<string>('');
   const router = useRouter();
   
   const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; description: string }>({
@@ -72,6 +75,20 @@ export function TaskList({ tasks, specId }: TaskListProps) {
       newSelected.delete(taskId);
     }
     setSelectedTasks(newSelected);
+  };
+
+  const handleViewTaskOutput = async (taskId: string, taskTitle: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`);
+      const data = await res.json();
+      if (data.success && data.data?.output) {
+        setViewOutputContent(data.data.output);
+        setViewOutputTitle(`Task Output: ${taskTitle}`);
+        setShowViewOutputModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading task output:', error);
+    }
   };
 
   const handleStartTask = async (taskId: string) => {
@@ -342,7 +359,7 @@ export function TaskList({ tasks, specId }: TaskListProps) {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/tasks/${task._id}`);
+                        handleViewTaskOutput(task._id, task.title);
                       }}
                     >
                       <Eye className="h-4 w-4 mr-1" />
@@ -399,6 +416,14 @@ export function TaskList({ tasks, specId }: TaskListProps) {
         description="Agent is working on the task... (You can dismiss and check task page for details)"
         progress={[taskOutput]}
         onDismiss={() => setShowProgressModal(false)}
+      />
+
+      <ProgressModal
+        open={showViewOutputModal}
+        title={viewOutputTitle}
+        description="Task execution output"
+        progress={[viewOutputContent]}
+        onDismiss={() => setShowViewOutputModal(false)}
       />
     </div>
   );
