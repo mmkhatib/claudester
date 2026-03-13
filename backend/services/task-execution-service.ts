@@ -264,20 +264,24 @@ ${task.dependencies.map((d: any) => `- ${d.title} (Status: ${d.status})`).join('
 
     prompt += `\n\n## INSTRUCTIONS
 
-IMPORTANT: Before creating files, check what already exists:
-1. Use list_directory tool to see existing files in the workspace: ${project.workspacePath}
+CRITICAL: You MUST write all files to the absolute path: ${project.workspacePath}
+
+Before creating files:
+1. Use list_directory tool on ${project.workspacePath} to see existing files
 2. Use read_file tool to read any existing files you need to understand or modify
-3. If a file already exists, read it first then edit/update it appropriately
-4. If a file doesn't exist, create it from scratch using write_file tool
+3. When writing files, use ABSOLUTE PATHS starting with ${project.workspacePath}
+   Example: ${project.workspacePath}/src/components/MyComponent.tsx
 
 Implementation Steps:
-1. First explore the workspace to understand existing code structure
+1. First explore ${project.workspacePath} to understand existing code structure
 2. Read any files that need to be modified
 3. Implement this task following the project's architecture and conventions
-4. Write all files to the workspace path: ${project.workspacePath}
+4. Write ALL files using absolute paths: ${project.workspacePath}/path/to/file
 5. Ensure the code integrates properly with existing components
 6. Follow the acceptance criteria exactly
 7. Write clean, well-documented code
+
+DO NOT use relative paths or virtual filesystem paths. Always use the full absolute path starting with ${project.workspacePath}
 8. Include error handling where appropriate
 
 Please implement this task now using the file operation tools (list_directory, read_file, write_file).`;

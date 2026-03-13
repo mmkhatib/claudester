@@ -459,7 +459,7 @@ Be thorough but practical. Think through feature dependencies and integration po
         // Use spawn for real-time streaming output
         const claudeProcess = spawn(this.claudeCommand, args, {
           env,
-          cwd: workspace,
+          cwd: workspace, // Set working directory to the workspace
           stdio: ['pipe', 'pipe', 'pipe']
         });
 
