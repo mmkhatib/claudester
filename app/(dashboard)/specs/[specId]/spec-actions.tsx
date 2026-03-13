@@ -294,50 +294,6 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
     }
   };
 
-  const handleViewRequirements = async () => {
-    try {
-      const res = await fetch(`/api/specs/${specId}`);
-      const data = await res.json();
-      
-      if (data.success && data.data?.requirements) {
-        const req = data.data.requirements;
-        let content = '# Requirements\n\n';
-        content += `## Functional Requirements\n${req.functional?.map((r: string) => `- ${r}`).join('\n') || 'None'}\n\n`;
-        content += `## Technical Requirements\n${req.technical?.map((r: string) => `- ${r}`).join('\n') || 'None'}\n\n`;
-        content += `## Constraints\n${req.constraints?.map((r: string) => `- ${r}`).join('\n') || 'None'}\n\n`;
-        content += `## Acceptance Criteria\n${req.acceptanceCriteria?.map((r: string) => `- ${r}`).join('\n') || 'None'}`;
-        
-        setViewOutputContent(content);
-        setViewOutputTitle('Requirements');
-        setShowViewOutputModal(true);
-      }
-    } catch (error) {
-      console.error('Error fetching requirements:', error);
-    }
-  };
-
-  const handleViewDesign = async () => {
-    try {
-      const res = await fetch(`/api/specs/${specId}`);
-      const data = await res.json();
-      
-      if (data.success && data.data?.design) {
-        const design = data.data.design;
-        let content = '# Design\n\n';
-        content += `## Architecture\n${design.architecture || 'Not specified'}\n\n`;
-        content += `## Data Model\n${design.dataModel || 'Not specified'}\n\n`;
-        content += `## API Endpoints\n${design.apiEndpoints?.map((e: string) => `- ${e}`).join('\n') || 'None'}\n\n`;
-        content += `## UI Components\n${design.uiComponents?.map((c: string) => `- ${c}`).join('\n') || 'None'}`;
-        
-        setViewOutputContent(content);
-        setViewOutputTitle('Design');
-        setShowViewOutputModal(true);
-      }
-    } catch (error) {
-      console.error('Error fetching design:', error);
-    }
-  };
-
   const showGenerateRequirements = !hasRequirements || !hasDesign;
   const showGenerateTasks = hasRequirements && hasDesign && currentPhase !== 'COMPLETED';
   const showViewOutput = hasRequirements || hasDesign;
