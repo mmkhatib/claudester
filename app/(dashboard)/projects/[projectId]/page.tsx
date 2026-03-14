@@ -15,6 +15,7 @@ import {
   GitBranch,
 } from 'lucide-react';
 import { GenerateSpecsButton } from './generate-specs-button';
+import { AnalyzeDependenciesButton } from '../../../(dashboard)/specs/analyze-dependencies-button';
 import { ArchitectureDisplay } from '@/components/architecture-display';
 import { GenerateArchitectureButton } from './generate-architecture-button';
 
@@ -219,6 +220,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              {specs.length > 0 && <AnalyzeDependenciesButton projectId={project._id.toString()} />}
               <GenerateSpecsButton projectId={project._id.toString()} />
               <Link href={`/specs/new?projectId=${project._id}`}>
                 <Button variant="outline" size="sm">
