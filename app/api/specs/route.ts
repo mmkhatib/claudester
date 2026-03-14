@@ -71,6 +71,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const [specs, total] = await Promise.all([
     Spec.find(query)
       .populate('projectId', 'name')
+      .populate('dependsOn', 'specNumber title layer status')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),

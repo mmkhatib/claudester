@@ -29,6 +29,10 @@ export interface ISpec extends Document {
   currentPhase: Phase;
   projectId: mongoose.Types.ObjectId;
 
+  // Dependency management
+  dependsOn: mongoose.Types.ObjectId[];  // Specs that must be completed before this one
+  layer: 'foundation' | 'recommended' | 'optional' | null; // Build order category
+
   // NOTE: Spec content is now stored in .claudester/specs/ files (file-based specs)
   // MongoDB only stores metadata for indexing, tracking, and search
   // Use workspaceManager.loadSpecContext() to read spec content from files
@@ -88,6 +92,16 @@ const SpecSchema = new Schema<ISpec>({
     ref: 'Project',
     required: true,
     index: true
+  },
+
+  dependsOn: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Spec',
+  }],
+  layer: {
+    type: String,
+    enum: ['foundation', 'recommended', 'optional', null],
+    default: null,
   },
 
   requirements: Schema.Types.Mixed,
