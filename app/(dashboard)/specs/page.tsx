@@ -2,18 +2,9 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Plus,
-  FileText,
-  Clock,
-  FolderKanban,
-  CheckCircle2,
-  Circle,
-  Lock,
-  Layers,
-  GitBranch,
-} from 'lucide-react';
+import { Plus, FileText, Layers } from 'lucide-react';
 import { AnalyzeDependenciesButton } from './analyze-dependencies-button';
+import { SpecCard, SpecLayerGroup, LAYER_CONFIG, getPhaseColor } from '@/components/spec-card';
 
 async function getSpecs() {
   try {
@@ -116,93 +107,13 @@ export default async function SpecsPage() {
   // Get unique project IDs for the analyze button
   const projectIds = [...new Set(specsWithData.map((s: any) => s.projectId?._id || s.projectId).filter(Boolean))];
 
-  const layerConfig = {
-    foundation: { label: 'Foundation', color: 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200', border: 'border-red-200 dark:border-red-900', icon: '🏗️', desc: 'Must be built first — everything depends on this' },
-    recommended: { label: 'Recommended', color: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200', border: 'border-blue-200 dark:border-blue-900', icon: '⚡', desc: 'Build after foundation — can be done in parallel' },
-    optional: { label: 'Optional', color: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300', border: 'border-zinc-200 dark:border-zinc-700', icon: '✨', desc: 'Enhancement features — build in any order' },
-  };
+  const layerConfig = LAYER_CONFIG;
 
-  const renderSpec = (spec: any, blocked: boolean) => {
-    const card = (
-      <Card className={`transition-colors ${blocked ? 'opacity-60 border-dashed' : 'hover:border-zinc-300 dark:hover:border-zinc-700'}`}>
-        <CardContent className="pt-4 pb-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                {blocked && <Lock className="h-4 w-4 text-zinc-400 flex-shrink-0" />}
-                <span className="text-xs font-mono text-zinc-500">#{String(spec.specNumber || 0).padStart(3, '0')}</span>
-                <h3 className="font-semibold text-sm">{spec.title}</h3>
-                {spec.layer && (
-                  <Badge className={`text-xs ${layerConfig[spec.layer as keyof typeof layerConfig]?.color}`}>
-                    {layerConfig[spec.layer as keyof typeof layerConfig]?.label}
-                  </Badge>
-                )}
-                {blocked && <Badge variant="outline" className="text-xs text-zinc-500">Locked</Badge>}
-              </div>
+  const renderSpec = (spec: any, blocked: boolean) => <SpecCard key={spec._id} spec={spec} />;
 
-              {/* Dependencies */}
-              {spec.dependsOn?.length > 0 && (
-                <div className="flex items-center gap-1 mb-2 flex-wrap">
-                  <GitBranch className="h-3 w-3 text-zinc-400" />
-                  <span className="text-xs text-zinc-500">Depends on:</span>
-                  {spec.dependsOn.map((dep: any) => (
-                    <span key={dep._id} className={`text-xs px-1.5 py-0.5 rounded font-mono ${dep.status === 'COMPLETE' ? 'bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300' : 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300'}`}>
-                      #{String(dep.specNumber).padStart(3, '0')} {dep.title}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 text-xs text-zinc-500">
-                <div className="flex items-center gap-1">
-                  {spec.requirements && Object.keys(spec.requirements).length > 0 ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <Circle className="h-3 w-3 text-zinc-400" />}
-                  Req
-                </div>
-                <div className="flex items-center gap-1">
-                  {spec.design ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <Circle className="h-3 w-3 text-zinc-400" />}
-                  Design
-                </div>
-                <div className="flex items-center gap-1">
-                  {spec.tasks?.length > 0 ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <Circle className="h-3 w-3 text-zinc-400" />}
-                  Tasks
-                </div>
-                {spec.project && <><FolderKanban className="h-3 w-3" />{spec.project.name}</>}
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <Badge className={getPhaseColor(spec.currentPhase || spec.phase)}>
-                {spec.currentPhase || spec.phase || 'REQUIREMENTS'}
-              </Badge>
-              <span className="text-xs text-zinc-500">{spec.taskProgress}%</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-
-    if (blocked) return <div key={spec._id} className="cursor-not-allowed">{card}</div>;
-    return <Link key={spec._id} href={`/specs/${spec._id}`}>{card}</Link>;
-  };
-
-  const renderLayer = (specs: any[], layerKey: 'foundation' | 'recommended' | 'optional') => {
-    if (!specs.length) return null;
-    const cfg = layerConfig[layerKey];
-    return (
-      <div className={`rounded-lg border-2 ${cfg.border} p-4 space-y-3`}>
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{cfg.icon}</span>
-          <div>
-            <h2 className="font-bold text-base">{cfg.label} Layer</h2>
-            <p className="text-xs text-zinc-500">{cfg.desc}</p>
-          </div>
-          <Badge className={`ml-auto ${cfg.color}`}>{specs.length} spec{specs.length !== 1 ? 's' : ''}</Badge>
-        </div>
-        <div className="space-y-2">
-          {specs.map((spec: any) => renderSpec(spec, isBlocked(spec)))}
-        </div>
-      </div>
-    );
-  };
+  const renderLayer = (specs: any[], layerKey: 'foundation' | 'recommended' | 'optional') => (
+    <SpecLayerGroup key={layerKey} specs={specs} layerKey={layerKey} />
+  );
 
   const hasLayers = foundation.length > 0 || recommended.length > 0 || optional.length > 0;
 
