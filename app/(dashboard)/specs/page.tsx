@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, FileText, Layers } from 'lucide-react';
 import { AnalyzeDependenciesButton } from './analyze-dependencies-button';
-import { SpecCard, SpecLayerGroup, LAYER_CONFIG, getPhaseColor } from '@/components/spec-card';
+import { SpecCard, SpecLayerGroup, LAYER_CONFIG } from '@/components/spec-card';
 
 async function getSpecs() {
   try {
@@ -62,15 +62,6 @@ function getRelativeTime(date: Date): string {
   return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
 }
 
-function getPhaseColor(phase: string) {
-  switch (phase?.toUpperCase()) {
-    case 'REQUIREMENTS': return 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200';
-    case 'DESIGN': return 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200';
-    case 'TASKS': return 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200';
-    case 'IMPLEMENTATION': return 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200';
-    default: return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200';
-  }
-}
 
 export default async function SpecsPage() {
   const specs = await getSpecs();
