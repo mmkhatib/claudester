@@ -11,6 +11,8 @@ import {
   Settings,
   Clock,
   TrendingUp,
+  Lock,
+  GitBranch,
 } from 'lucide-react';
 import { GenerateSpecsButton } from './generate-specs-button';
 import { ArchitectureDisplay } from '@/components/architecture-display';
@@ -245,47 +247,77 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {specs.map((spec: any) => (
-                <Link
-                  key={spec._id}
-                  href={`/specs/${spec._id}`}
-                  className="block p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono text-zinc-500 dark:text-zinc-400">
-                          #{String(spec.specNumber || 0).padStart(3, '0')}
-                        </span>
-                        <h3 className="font-medium">{spec.name || spec.title}</h3>
+            <div className="space-y-6">
+              {(() => {
+                const sorted = [...specs].sort((a: any, b: any) => (a.specNumber || 0) - (b.specNumber || 0));
+                const foundation = sorted.filter((s: any) => s.layer === 'foundation');
+                const recommended = sorted.filter((s: any) => s.layer === 'recommended');
+                const optional = sorted.filter((s: any) => s.layer === 'optional');
+                const uncategorized = sorted.filter((s: any) => !s.layer);
+                const hasLayers = foundation.length > 0 || recommended.length > 0 || optional.length > 0;
+
+                const isBlocked = (spec: any) =>
+                  spec.dependsOn?.some((dep: any) => dep.status !== 'COMPLETE');
+
+                const layerConfig: Record<string, { label: string; border: string; icon: string }> = {
+                  foundation: { label: 'Foundation', border: 'border-red-200 dark:border-red-900', icon: '🏗️' },
+                  recommended: { label: 'Recommended', border: 'border-blue-200 dark:border-blue-900', icon: '⚡' },
+                  optional: { label: 'Optional', border: 'border-zinc-200 dark:border-zinc-700', icon: '✨' },
+                };
+
+                const renderSpec = (spec: any) => {
+                  const blocked = isBlocked(spec);
+                  const card = (
+                    <div className={`p-3 rounded-lg border transition-colors ${blocked ? 'opacity-60 border-dashed border-zinc-300 dark:border-zinc-700' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {blocked && <Lock className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />}
+                          <span className="text-xs font-mono text-zinc-500">#{String(spec.specNumber || 0).padStart(3, '0')}</span>
+                          <span className="font-medium text-sm truncate">{spec.name || spec.title}</span>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {blocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
+                          <Badge variant="outline" className="text-xs">{spec.currentPhase || spec.phase || 'REQUIREMENTS'}</Badge>
+                        </div>
                       </div>
-                      <p className="text-sm text-zinc-500 mt-1 flex items-center">
-                        <Clock className="h-3.5 w-3.5 mr-1" />
-                        Updated {spec.updatedAt ? getRelativeTime(spec.updatedAt) : 'recently'}
-                      </p>
+                      {spec.dependsOn?.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                          <GitBranch className="h-3 w-3 text-zinc-400" />
+                          {spec.dependsOn.map((dep: any) => (
+                            <span key={dep._id} className={`text-xs px-1 py-0.5 rounded font-mono ${dep.status === 'COMPLETE' ? 'bg-green-100 dark:bg-green-950 text-green-700' : 'bg-orange-100 dark:bg-orange-950 text-orange-700'}`}>
+                              #{String(dep.specNumber).padStart(3, '0')}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline">{spec.phase || 'REQUIREMENTS'}</Badge>
-                      {spec.status && <Badge variant="secondary">{spec.status}</Badge>}
+                  );
+                  if (blocked) return <div key={spec._id} className="cursor-not-allowed">{card}</div>;
+                  return <Link key={spec._id} href={`/specs/${spec._id}`}>{card}</Link>;
+                };
+
+                const renderLayer = (layerSpecs: any[], key: string) => {
+                  if (!layerSpecs.length) return null;
+                  const cfg = layerConfig[key];
+                  return (
+                    <div key={key} className={`rounded-lg border-2 ${cfg.border} p-3 space-y-2`}>
+                      <p className="text-xs font-semibold text-zinc-500">{cfg.icon} {cfg.label} Layer</p>
+                      {layerSpecs.map(renderSpec)}
                     </div>
-                  </div>
-                  {spec.progress !== undefined && (
-                    <div>
-                      <div className="flex items-center justify-between text-sm mb-1">
-                        <span className="text-zinc-600 dark:text-zinc-400">Progress</span>
-                        <span className="font-medium">{spec.progress}%</span>
-                      </div>
-                      <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all"
-                          style={{ width: `${spec.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </Link>
-              ))}
+                  );
+                };
+
+                if (hasLayers) return (
+                  <>
+                    {renderLayer(foundation, 'foundation')}
+                    {renderLayer(recommended, 'recommended')}
+                    {renderLayer(optional, 'optional')}
+                    {uncategorized.length > 0 && <div className="space-y-2">{uncategorized.map(renderSpec)}</div>}
+                  </>
+                );
+
+                return <div className="space-y-2">{sorted.map(renderSpec)}</div>;
+              })()}
             </div>
           )}
         </CardContent>
