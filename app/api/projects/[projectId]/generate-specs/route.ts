@@ -10,6 +10,7 @@ import {
 import { claudeClient } from '@/backend/services/claude-client';
 import { publishActivityLog } from '@/lib/pubsub';
 import { EventType } from '@/backend/models';
+import { runAnalysis } from '../analyze-dependencies/analysis';
 
 interface RouteContext {
   params: {
@@ -119,38 +120,8 @@ export const POST = withErrorHandling(async (
     specNumber++;
   }
 
-  // Auto-analyze dependencies after generating specs
-  try {
-    const allSpecs = await Spec.find({ projectId: context.params.projectId }).lean();
-    const specList = allSpecs.map((s: any) => `ID:${s._id} #${s.specNumber} "${s.title}": ${(s.description || '').slice(0, 120)}`).join('\n');
-    const prompt = `Analyze these software feature specs and determine build order dependencies.\n\n${specList}\n\nCategorize each spec:\n- "foundation": Core features everything else depends on\n- "recommended": Depends on foundation, can be built in parallel\n- "optional": Enhancement features, built last\n\nRespond ONLY with valid JSON:\n{"specs":[{"id":"<_id>","layer":"foundation"|"recommended"|"optional","dependsOn":["<_id>"]}]}`;
-
-    const { spawn } = await import('child_process');
-    const { execSync } = await import('child_process');
-    let claudePath = 'claude';
-    try { claudePath = execSync('which claude', { encoding: 'utf8' }).trim(); } catch {}
-
-    const result = await new Promise<string>((resolve) => {
-      let output = '';
-      const env = { ...process.env };
-      delete env.ANTHROPIC_API_KEY;
-      const proc = spawn(claudePath, ['-p', prompt, '--output-format', 'text'], { env });
-      proc.stdout.on('data', (d: Buffer) => output += d.toString());
-      proc.on('close', () => resolve(output));
-      proc.on('error', () => resolve(''));
-    });
-
-    const jsonMatch = result.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const { specs: analyzed } = JSON.parse(jsonMatch[0]);
-      for (const item of analyzed) {
-        await Spec.findByIdAndUpdate(item.id, { layer: item.layer, dependsOn: item.dependsOn || [] });
-      }
-    }
-  } catch (e) {
-    // Non-fatal - specs are still created even if analysis fails
-    console.warn('[generate-specs] Dependency analysis failed:', e);
-  }
+  // Auto-analyze dependencies in background (non-blocking)
+  runAnalysis(context.params.projectId).catch(e => console.warn('[generate-specs] Dependency analysis failed:', e));
 
   return successResponse(
     { specs: createdSpecs, count: createdSpecs.length },
