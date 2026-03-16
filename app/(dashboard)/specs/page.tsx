@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, FileText, Layers } from 'lucide-react';
 import { AnalyzeDependenciesButton } from './analyze-dependencies-button';
-import { SpecCard, SpecLayerGroup, LAYER_CONFIG } from '@/components/spec-card';
+import { SpecCard, SpecLayerGroup, SpecPriorityGroup, LAYER_CONFIG } from '@/components/spec-card';
 
 async function getSpecs() {
   try {
@@ -139,7 +139,7 @@ export default async function SpecsPage() {
           {uncategorized.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm text-zinc-500 flex items-center gap-1"><Layers className="h-4 w-4" /> Uncategorized — run "Analyze Dependencies" to categorize</p>
-              {uncategorized.map((spec: any) => renderSpec(spec, false))}
+              <SpecPriorityGroup specs={uncategorized} />
             </div>
           )}
         </div>
@@ -149,7 +149,7 @@ export default async function SpecsPage() {
             <Layers className="h-4 w-4 text-zinc-400" />
             <p className="text-sm text-zinc-500">Run "Analyze Dependencies" to automatically categorize specs into build layers and detect dependencies.</p>
           </div>
-          {specsWithData.map((spec: any) => renderSpec(spec, false))}
+          <SpecPriorityGroup specs={specsWithData} />
         </div>
       )}
     </div>

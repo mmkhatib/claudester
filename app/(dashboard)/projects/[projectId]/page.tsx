@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { GenerateSpecsButton } from './generate-specs-button';
 import { AnalyzeDependenciesButton } from '../../../(dashboard)/specs/analyze-dependencies-button';
-import { SpecCard, SpecLayerGroup, LAYER_CONFIG, isSpecBlocked } from '@/components/spec-card';
+import { SpecCard, SpecLayerGroup, SpecPriorityGroup, LAYER_CONFIG, isSpecBlocked } from '@/components/spec-card';
 import { ArchitectureDisplay } from '@/components/architecture-display';
 import { GenerateArchitectureButton } from './generate-architecture-button';
 
@@ -262,11 +262,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                     <SpecLayerGroup specs={foundation} layerKey="foundation" />
                     <SpecLayerGroup specs={recommended} layerKey="recommended" />
                     <SpecLayerGroup specs={optional} layerKey="optional" />
-                    {uncategorized.length > 0 && <div className="space-y-2">{uncategorized.map((s: any) => <SpecCard key={s._id} spec={s} />)}</div>}
+                    {uncategorized.length > 0 && <SpecPriorityGroup specs={uncategorized} />}
                   </>
                 );
 
-                return <div className="space-y-2">{sorted.map((s: any) => <SpecCard key={s._id} spec={s} />)}</div>;
+                return <SpecPriorityGroup specs={sorted} />;
               })()}
             </div>
           )}

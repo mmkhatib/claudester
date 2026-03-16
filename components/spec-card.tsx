@@ -77,6 +77,9 @@ export function SpecCard({ spec, compact = false }: { spec: any; compact?: boole
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <Badge className={getPhaseColor(phase)}>{phase}</Badge>
           {layer && <Badge className={`text-xs ${LAYER_CONFIG[layer].color}`}>{LAYER_CONFIG[layer].icon} {LAYER_CONFIG[layer].label}</Badge>}
+          {spec.priority && PRIORITY_CONFIG[spec.priority] && (
+            <Badge className={`text-xs ${PRIORITY_CONFIG[spec.priority].color}`}>{spec.priority}</Badge>
+          )}
           {blocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
         </div>
       </div>
@@ -87,11 +90,57 @@ export function SpecCard({ spec, compact = false }: { spec: any; compact?: boole
   return <Link key={spec._id} href={`/specs/${spec._id}`}>{inner}</Link>;
 }
 
-export function SpecLayerGroup({ specs, layerKey }: { specs: any[]; layerKey: keyof typeof LAYER_CONFIG }) {
+export const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
+  P0: { label: 'P0 Critical', color: 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200' },
+  P1: { label: 'P1 High',     color: 'bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200' },
+  P2: { label: 'P2 Medium',   color: 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200' },
+  P3: { label: 'P3 Low',      color: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400' },
+};
+
+export function SpecPriorityGroup({ specs }: { specs: any[] }) {
+  if (!specs.length) return null;
+  const priorities = ['P0', 'P1', 'P2', 'P3'];
+  const byPriority = priorities.map(p => ({
+    priority: p,
+    specs: specs.filter((s: any) => s.priority === p),
+  })).filter(g => g.specs.length > 0);
+  const noPriority = specs.filter((s: any) => !s.priority || !priorities.includes(s.priority));
+
+  if (byPriority.length === 0) return <div className="space-y-2">{specs.map((s: any) => <SpecCard key={s._id} spec={s} />)}</div>;
+
+  return (
+    <div className="space-y-4">
+      {byPriority.map(({ priority, specs: pSpecs }) => {
+        const pcfg = PRIORITY_CONFIG[priority];
+        return (
+          <div key={priority}>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge className={`text-xs ${pcfg.color}`}>{pcfg.label}</Badge>
+              <span className="text-xs text-zinc-400">{pSpecs.length} spec{pSpecs.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="space-y-2 pl-2 border-l-2 border-zinc-200 dark:border-zinc-700">
+              {pSpecs.map((spec: any) => <SpecCard key={spec._id} spec={spec} />)}
+            </div>
+          </div>
+        );
+      })}
+      {noPriority.map((s: any) => <SpecCard key={s._id} spec={s} />)}
+    </div>
+  );
+}
   if (!specs.length) return null;
   const cfg = LAYER_CONFIG[layerKey];
+
+  // Group by priority within the layer
+  const priorities = ['P0', 'P1', 'P2', 'P3'];
+  const byPriority = priorities.map(p => ({
+    priority: p,
+    specs: specs.filter((s: any) => s.priority === p),
+  })).filter(g => g.specs.length > 0);
+  const noPriority = specs.filter((s: any) => !s.priority || !priorities.includes(s.priority));
+
   return (
-    <div className={`rounded-lg border-2 ${cfg.border} p-4 space-y-3`}>
+    <div className={`rounded-lg border-2 ${cfg.border} p-4 space-y-4`}>
       <div className="flex items-center gap-2">
         <span className="text-lg">{cfg.icon}</span>
         <div>
@@ -100,9 +149,25 @@ export function SpecLayerGroup({ specs, layerKey }: { specs: any[]; layerKey: ke
         </div>
         <Badge className={`ml-auto ${cfg.color}`}>{specs.length} spec{specs.length !== 1 ? 's' : ''}</Badge>
       </div>
-      <div className="space-y-2">
-        {specs.map((spec: any) => <SpecCard key={spec._id} spec={spec} />)}
-      </div>
+      {byPriority.map(({ priority, specs: pSpecs }) => {
+        const pcfg = PRIORITY_CONFIG[priority];
+        return (
+          <div key={priority}>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge className={`text-xs ${pcfg.color}`}>{pcfg.label}</Badge>
+              <span className="text-xs text-zinc-400">{pSpecs.length} spec{pSpecs.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="space-y-2 pl-2 border-l-2 border-zinc-200 dark:border-zinc-700">
+              {pSpecs.map((spec: any) => <SpecCard key={spec._id} spec={spec} />)}
+            </div>
+          </div>
+        );
+      })}
+      {noPriority.length > 0 && (
+        <div className="space-y-2">
+          {noPriority.map((spec: any) => <SpecCard key={spec._id} spec={spec} />)}
+        </div>
+      )}
     </div>
   );
 }
