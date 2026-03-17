@@ -128,6 +128,8 @@ export function SpecPriorityGroup({ specs }: { specs: any[] }) {
     </div>
   );
 }
+
+export function SpecLayerGroup({ specs, layerKey }: { specs: any[]; layerKey: keyof typeof LAYER_CONFIG }) {
   if (!specs.length) return null;
   const cfg = LAYER_CONFIG[layerKey];
 
