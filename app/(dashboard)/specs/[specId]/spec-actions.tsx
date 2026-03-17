@@ -39,6 +39,7 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
   const bufferTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+  const [isAnalyzingTasks, setIsAnalyzingTasks] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [showViewOutputModal, setShowViewOutputModal] = useState(false);
   const [viewOutputContent, setViewOutputContent] = useState<string>('');
@@ -297,6 +298,16 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
 
   const showGenerateRequirements = !hasRequirements || !hasDesign;
   const showGenerateTasks = hasRequirements && hasDesign && currentPhase !== 'COMPLETED';
+
+  const handleAnalyzeTasks = async () => {
+    setIsAnalyzingTasks(true);
+    try {
+      await fetch(`/api/specs/${specId}/analyze-tasks`, { method: 'POST' });
+      router.refresh();
+    } finally {
+      setIsAnalyzingTasks(false);
+    }
+  };
   const showViewOutput = hasRequirements || hasDesign;
 
   const handleReset = async () => {
@@ -436,6 +447,18 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
         >
           <Play className="h-4 w-4 mr-2" />
           {isGeneratingTasks ? 'Generating Tasks...' : 'Generate Tasks'}
+        </Button>
+      )}
+
+      {!showGenerateTasks && !isBlocked && (
+        <Button
+          variant="outline"
+          onClick={handleAnalyzeTasks}
+          disabled={isAnalyzingTasks}
+          title="Re-analyze task priorities and dependencies without touching code or status"
+        >
+          <Wand2 className="h-4 w-4 mr-2" />
+          {isAnalyzingTasks ? 'Analyzing...' : 'Analyze Tasks'}
         </Button>
       )}
     </div>
