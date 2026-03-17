@@ -641,15 +641,15 @@ ARCHITECTURE:
 RELATED SPECS (consider integration):
 ${relatedSpecs.map(s => `- ${s.name}: ${s.description}`).join('\n')}` : '';
 
-    const prompt = `You are a technical requirements analyst. Generate comprehensive requirements for the following feature specification.
+    const prompt = `You are a technical requirements analyst. Generate concise, actionable requirements for the following feature. Be specific but brief — no padding, no obvious statements.
 
 Specification: ${specName}
 
 Description: ${specDescription}${contextText}${architectureText}${relatedText}
 
-Generate detailed requirements in the following categories:
+Generate requirements in these categories (3-5 items each, only include what's non-obvious or important):
 1. Functional Requirements - What the feature must do
-2. Technical Requirements - Technology stack, architecture decisions, performance needs${architecture ? ' (must use: ' + architecture.techStack.frontend?.join(', ') + ')' : ''}
+2. Technical Requirements - Stack, architecture decisions, performance needs${architecture ? ' (must use: ' + architecture.techStack.frontend?.join(', ') + ')' : ''}
 3. Constraints - Limitations, dependencies, compatibility requirements
 4. Acceptance Criteria - Testable conditions that must be met
 
@@ -717,7 +717,7 @@ ARCHITECTURE:
 RELATED SPECS (ensure integration):
 ${relatedSpecs.map(s => `- ${s.name}: ${s.description}${s.design ? '\n  Design: ' + JSON.stringify(s.design).substring(0, 200) : ''}`).join('\n')}` : '';
 
-    const prompt = `You are a software architect. Design the technical architecture for the following feature.
+    const prompt = `You are a software architect. Design the technical architecture for the following feature. Be concise — focus on decisions that matter, skip boilerplate.
 
 Specification: ${specName}
 
@@ -727,11 +727,11 @@ Requirements:
 - Functional: ${requirements.functional.join(', ')}
 - Technical: ${requirements.technical.join(', ')}${contextText}${architectureText}${relatedText}
 
-Generate a technical design including:
-1. Architecture - High-level architectural approach and patterns${architecture ? ' (must follow: ' + architecture.patterns.join(', ') + ')' : ''}
-2. Data Model - Database schema, data structures${architecture && architecture.dataModel ? ' (extend: ' + architecture.dataModel.substring(0, 100) + ')' : ''}
-3. API Endpoints - REST/GraphQL endpoints needed (if applicable)
-4. UI Components - React/UI components needed (if applicable)
+Generate a technical design (keep each section brief and specific):
+1. Architecture - Key patterns and approach${architecture ? ' (must follow: ' + architecture.patterns.join(', ') + ')' : ''}
+2. Data Model - Schema and key data structures${architecture && architecture.dataModel ? ' (extend: ' + architecture.dataModel.substring(0, 100) + ')' : ''}
+3. API Endpoints - Only non-obvious endpoints (if applicable)
+4. UI Components - Key components only (if applicable)
 
 Output as JSON with this structure:
 {
