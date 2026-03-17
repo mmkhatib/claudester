@@ -115,6 +115,7 @@ Claudester enables non-technical stakeholders (product managers, business users)
 - **67 Tasks Completed** across 10 phases
 - **Full-Stack Implementation** - Frontend + Backend + AI Agents
 - **Real-Time Features** - WebSocket-powered live monitoring
+- **Spec Dependency Enforcement** - AI-analyzed layers, hard-blocked execution, auto-completion
 
 ## Quick Start
 
@@ -384,7 +385,7 @@ This project follows a spec-driven development methodology. All changes should:
 ---
 
 **Status**: Implementation Complete - Ready for Deployment
-**Last Updated**: 2025-11-17
+**Last Updated**: 2026-03-16
 
 ## Features Implemented
 
@@ -394,6 +395,11 @@ This project follows a spec-driven development methodology. All changes should:
 - Task queue system with Bull
 - WebSocket server for live updates
 - Authentication (Clerk) with demo mode
+- Spec dependency analysis (AI-powered, auto-runs on generation)
+- Spec layer grouping (Foundation / Recommended / Optional) with priority tiers (P0–P3)
+- Hard-enforced spec dependency blocking — UI + API level
+- Task-level dependency blocking with per-task lock indicators
+- Specs auto-complete when all their tasks finish
 
 ### ✅ Frontend
 - Dashboard with stats and activity
