@@ -29,6 +29,7 @@ export interface GeneratedTask {
   estimatedHours: number;
   dependencies: string[];
   acceptanceCriteria: string[];
+  priority?: 'P0' | 'P1' | 'P2' | 'P3';
 }
 
 export interface ProjectArchitecture {

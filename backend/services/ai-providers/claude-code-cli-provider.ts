@@ -816,10 +816,13 @@ Output as JSON array with this structure:
     "title": "Task name",
     "description": "What needs to be done",
     "estimatedHours": 4,
+    "priority": "P0" | "P1" | "P2" | "P3",
     "dependencies": ["other task titles that must be completed first"],
     "acceptanceCriteria": ["criterion 1", "criterion 2"]
   }
-]`;
+]
+
+Priority guide: P0=blocking/critical path, P1=core feature, P2=supporting, P3=polish/optional`;
 
     console.log('[CLI Provider] Generating tasks...');
     const response = await this.executeClaude(prompt, { 

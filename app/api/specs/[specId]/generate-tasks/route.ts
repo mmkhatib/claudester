@@ -83,12 +83,12 @@ export const POST = withErrorHandling(async (
 
   console.log(`Generated ${generatedTasks.length} tasks`);
 
+  const PRIORITY_MAP: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+
   // Create tasks in database
   const createdTasks = [];
   for (let index = 0; index < generatedTasks.length; index++) {
     const taskData = generatedTasks[index];
-
-    // Generate a unique taskId
     const taskId = `${spec._id.toString().slice(-6)}-T${(index + 1).toString().padStart(3, '0')}`;
 
     const task = await Task.create({
@@ -98,17 +98,17 @@ export const POST = withErrorHandling(async (
       title: taskData.title,
       name: taskData.title,
       description: taskData.description,
-      type: 'DEVELOPMENT', // Default to DEVELOPMENT type
+      type: 'DEVELOPMENT',
       status: 'PENDING',
       order: index,
-      priority: 2, // Default priority
+      priority: PRIORITY_MAP[taskData.priority || 'P1'] ?? 1,
       estimatedHours: taskData.estimatedHours,
       acceptanceCriteria: taskData.acceptanceCriteria || [],
-      dependencies: [], // Dependencies will be ObjectIds, not string array
+      dependencies: [],
       files: [],
     });
 
-    createdTasks.push(task);
+    createdTasks.push({ task, rawDeps: taskData.dependencies || [] });
 
     await publishActivityLog({
       eventType: EventType.TASK_CREATED,
@@ -118,6 +118,19 @@ export const POST = withErrorHandling(async (
       metadata: { estimatedHours: taskData.estimatedHours },
     });
   }
+
+  // Resolve title-based dependencies → ObjectIds
+  for (const { task, rawDeps } of createdTasks) {
+    if (rawDeps.length === 0) continue;
+    const depIds = createdTasks
+      .filter(({ task: t }) => rawDeps.some((d: string) => t.title.toLowerCase().includes(d.toLowerCase()) || d.toLowerCase().includes(t.title.toLowerCase())))
+      .map(({ task: t }) => t._id);
+    if (depIds.length > 0) {
+      await Task.findByIdAndUpdate(task._id, { dependencies: depIds });
+    }
+  }
+
+  const finalTasks = createdTasks.map(({ task }) => task);
 
   // Update spec to IMPLEMENTATION phase
   spec.currentPhase = 'IMPLEMENTATION';
@@ -133,8 +146,8 @@ export const POST = withErrorHandling(async (
       const taskData = {
         tasks: generatedTasks,
         summary: {
-          totalTasks: createdTasks.length,
-          totalEstimatedHours: createdTasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0),
+          totalTasks: finalTasks.length,
+          totalEstimatedHours: finalTasks.reduce((sum: number, t: any) => sum + (t.estimatedHours || 0), 0),
         },
       };
       await writeTasks(fullProject.workspacePath, specId, taskData);
@@ -153,12 +166,12 @@ export const POST = withErrorHandling(async (
   await publishActivityLog({
     eventType: EventType.SPEC_UPDATED,
     specId: spec._id,
-    message: `${createdTasks.length} tasks generated for: ${spec.title}`,
-    metadata: { phase: 'IMPLEMENTATION', taskCount: createdTasks.length },
+    message: `${finalTasks.length} tasks generated for: ${spec.title}`,
+    metadata: { phase: 'IMPLEMENTATION', taskCount: finalTasks.length },
   });
 
   return successResponse(
-    { tasks: createdTasks, count: createdTasks.length, spec },
-    `Generated ${createdTasks.length} tasks successfully`
+    { tasks: finalTasks, count: finalTasks.length, spec },
+    `Generated ${finalTasks.length} tasks successfully`
   );
 });

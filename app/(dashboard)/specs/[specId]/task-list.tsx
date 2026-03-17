@@ -17,8 +17,23 @@ interface Task {
   status: string;
   type?: string;
   estimatedHours?: number;
+  priority?: number;
   dependencies?: { _id: string; title: string; status: string; order: number }[];
 }
+
+const PRIORITY_LABELS: Record<number, string> = { 0: 'P0', 1: 'P1', 2: 'P2', 3: 'P3' };
+const PRIORITY_COLORS: Record<number, string> = {
+  0: 'border-red-400 dark:border-red-600',
+  1: 'border-orange-400 dark:border-orange-600',
+  2: 'border-yellow-400 dark:border-yellow-600',
+  3: 'border-zinc-300 dark:border-zinc-600',
+};
+const PRIORITY_BADGE: Record<number, string> = {
+  0: 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300',
+  1: 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300',
+  2: 'bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300',
+  3: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+};
 
 interface TaskListProps {
   tasks: Task[];
@@ -329,101 +344,94 @@ export function TaskList({ tasks, specId, isBlocked = false }: TaskListProps) {
         </div>
       </div>
 
-      {/* Task list */}
-      <div className="space-y-3">
-        {tasks.map((task: Task, index: number) => {
-          const blockingDeps = (task.dependencies || []).filter(d => d.status !== 'COMPLETED');
-          const isTaskBlocked = !isBlocked && blockingDeps.length > 0;
-          const blockTitle = isTaskBlocked
-            ? `Waiting for: ${blockingDeps.map(d => d.title).join(', ')}`
-            : isBlocked ? 'Complete dependency specs first' : undefined;
+      {/* Task list grouped by priority */}
+      <div className="space-y-6">
+        {[0, 1, 2, 3].map(p => {
+          const group = tasks.filter((t: Task) => (t.priority ?? 1) === p);
+          if (group.length === 0) return null;
           return (
-            <div
-            key={task._id}
-            className="flex items-start gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer"
-            onClick={() => router.push(`/tasks/${task._id}`)}
-          >
-            <Checkbox
-              checked={selectedTasks.has(task._id)}
-              onCheckedChange={(checked) => handleSelectTask(task._id, checked as boolean)}
-              onClick={(e) => e.stopPropagation()}
-              aria-label={`Select task ${task.title}`}
-              className="mt-1"
-            />
-            <div className="flex-shrink-0 mt-0.5">
-              <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                  {index + 1}
-                </span>
+            <div key={p}>
+              <div className={`flex items-center gap-2 mb-2 pb-1 border-b-2 ${PRIORITY_COLORS[p]}`}>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded ${PRIORITY_BADGE[p]}`}>{PRIORITY_LABELS[p]}</span>
+                <span className="text-xs text-zinc-500">{group.length} task{group.length !== 1 ? 's' : ''}</span>
               </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <h4 className="font-medium text-sm mb-1">{task.title}</h4>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">
-                    {task.description}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className={getStatusColor(task.status)}>
-                    {task.status}
-                  </Badge>
-                  {task.status === 'COMPLETED' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewTaskOutput(task._id, task.title);
-                      }}
+              <div className="space-y-3">
+                {group.map((task: Task, index: number) => {
+                  const blockingDeps = (task.dependencies || []).filter(d => d.status !== 'COMPLETED');
+                  const isTaskBlocked = !isBlocked && blockingDeps.length > 0;
+                  const blockTitle = isTaskBlocked
+                    ? `Waiting for: ${blockingDeps.map(d => d.title).join(', ')}`
+                    : isBlocked ? 'Complete dependency specs first' : undefined;
+                  return (
+                    <div
+                      key={task._id}
+                      className="flex items-start gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer"
+                      onClick={() => router.push(`/tasks/${task._id}`)}
                     >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View Output
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStartTask(task._id);
-                    }}
-                    disabled={startingTaskId === task._id || task.status === 'COMPLETED' || isBlocked || isTaskBlocked}
-                    title={blockTitle}
-                  >
-                    {startingTaskId === task._id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isTaskBlocked ? (
-                      <Lock className="h-4 w-4 text-orange-400" />
-                    ) : (
-                      <Play className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+                      <Checkbox
+                        checked={selectedTasks.has(task._id)}
+                        onCheckedChange={(checked) => handleSelectTask(task._id, checked as boolean)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select task ${task.title}`}
+                        className="mt-1"
+                      />
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            {tasks.indexOf(task) + 1}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm mb-1">{task.title}</h4>
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{task.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={getStatusColor(task.status)}>{task.status}</Badge>
+                            {task.status === 'COMPLETED' && (
+                              <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewTaskOutput(task._id, task.title); }}>
+                                <Eye className="h-4 w-4 mr-1" />View Output
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleStartTask(task._id); }}
+                              disabled={startingTaskId === task._id || task.status === 'COMPLETED' || isBlocked || isTaskBlocked}
+                              title={blockTitle}
+                            >
+                              {startingTaskId === task._id ? <Loader2 className="h-4 w-4 animate-spin" /> : isTaskBlocked ? <Lock className="h-4 w-4 text-orange-400" /> : <Play className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+                        {isTaskBlocked && (
+                          <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                            Waiting for: {blockingDeps.map(d => d.title).join(', ')}
+                          </p>
+                        )}
+                        {(task.dependencies && task.dependencies.length > 0) && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {task.dependencies.map(d => (
+                              <span key={d._id} className={`text-xs px-1.5 py-0.5 rounded border ${d.status === 'COMPLETED' ? 'border-green-300 text-green-700 dark:text-green-400' : 'border-orange-300 text-orange-700 dark:text-orange-400'}`}>
+                                {d.status === 'COMPLETED' ? '✓' : '○'} {d.title}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {(task.estimatedHours || task.type) && (
+                          <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500">
+                            {task.estimatedHours && <span className="flex items-center"><Clock className="h-3 w-3 mr-1" />{task.estimatedHours}h estimated</span>}
+                            {task.type && <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">{task.type}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {isTaskBlocked && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                  Waiting for: {blockingDeps.map(d => d.title).join(', ')}
-                </p>
-              )}
-              {(task.estimatedHours || task.type) && (
-                <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500">
-                  {task.estimatedHours && (
-                    <span className="flex items-center">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {task.estimatedHours}h estimated
-                    </span>
-                  )}
-                  {task.type && (
-                    <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
-                      {task.type}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
-          </div>
           );
         })}
       </div>
