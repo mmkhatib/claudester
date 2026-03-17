@@ -70,6 +70,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       .populate('projectId', 'name')
       .populate('assignedTo', 'name email')
       .populate('agentId', 'status type')
+      .populate('dependencies', 'title status order')
       .lean(),
     Task.countDocuments(filter),
   ]);

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, Play, PlayCircle, Loader2, Eye } from 'lucide-react';
+import { Clock, Play, PlayCircle, Loader2, Eye, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AlertDialog } from '@/components/ui/alert-dialog';
 import { ProgressModal } from '@/components/ui/progress-modal';
@@ -17,6 +17,7 @@ interface Task {
   status: string;
   type?: string;
   estimatedHours?: number;
+  dependencies?: { _id: string; title: string; status: string; order: number }[];
 }
 
 interface TaskListProps {
@@ -330,8 +331,14 @@ export function TaskList({ tasks, specId, isBlocked = false }: TaskListProps) {
 
       {/* Task list */}
       <div className="space-y-3">
-        {tasks.map((task: Task, index: number) => (
-          <div
+        {tasks.map((task: Task, index: number) => {
+          const blockingDeps = (task.dependencies || []).filter(d => d.status !== 'COMPLETED');
+          const isTaskBlocked = !isBlocked && blockingDeps.length > 0;
+          const blockTitle = isTaskBlocked
+            ? `Waiting for: ${blockingDeps.map(d => d.title).join(', ')}`
+            : isBlocked ? 'Complete dependency specs first' : undefined;
+          return (
+            <div
             key={task._id}
             className="flex items-start gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer"
             onClick={() => router.push(`/tasks/${task._id}`)}
@@ -382,17 +389,24 @@ export function TaskList({ tasks, specId, isBlocked = false }: TaskListProps) {
                       e.stopPropagation();
                       handleStartTask(task._id);
                     }}
-                    disabled={startingTaskId === task._id || task.status === 'COMPLETED' || isBlocked}
-                    title={isBlocked ? 'Complete dependency specs first' : undefined}
+                    disabled={startingTaskId === task._id || task.status === 'COMPLETED' || isBlocked || isTaskBlocked}
+                    title={blockTitle}
                   >
                     {startingTaskId === task._id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isTaskBlocked ? (
+                      <Lock className="h-4 w-4 text-orange-400" />
                     ) : (
                       <Play className="h-4 w-4" />
                     )}
                   </Button>
                 </div>
               </div>
+              {isTaskBlocked && (
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  Waiting for: {blockingDeps.map(d => d.title).join(', ')}
+                </p>
+              )}
               {(task.estimatedHours || task.type) && (
                 <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500">
                   {task.estimatedHours && (
@@ -410,7 +424,8 @@ export function TaskList({ tasks, specId, isBlocked = false }: TaskListProps) {
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       
       <AlertDialog
