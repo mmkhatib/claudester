@@ -46,13 +46,10 @@ export async function POST(
     });
   } catch (error: any) {
     console.error('[API] Error starting task:', error);
+    const isBlocked = error.message?.startsWith('Blocked by incomplete specs');
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to start task',
-        details: error.stack,
-      },
-      { status: 500 }
+      { success: false, error: error.message || 'Failed to start task' },
+      { status: isBlocked ? 403 : 500 }
     );
   }
 }

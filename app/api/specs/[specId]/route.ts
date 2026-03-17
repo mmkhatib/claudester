@@ -9,7 +9,9 @@ export async function GET(
   try {
     await connectDB();
 
-    const spec = await Spec.findById(params.specId).populate('projectId', 'name');
+    const spec = await Spec.findById(params.specId)
+      .populate('projectId', 'name')
+      .populate('dependsOn', 'specNumber title status');
     
     if (!spec) {
       return NextResponse.json(

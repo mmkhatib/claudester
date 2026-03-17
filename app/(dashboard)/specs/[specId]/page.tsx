@@ -70,6 +70,10 @@ export default async function SpecDetailPage({ params }: PageProps) {
 
   const tasks = await getTasks(params.specId);
 
+  // Compute blocking state
+  const blockingSpecs = (spec.dependsOn || []).filter((dep: any) => dep.status !== 'COMPLETE');
+  const isBlocked = blockingSpecs.length > 0;
+
   // Calculate progress based on task completion
   const taskProgress = tasks.length > 0
     ? Math.round((tasks.filter((t: any) => t.status === 'COMPLETED').length / tasks.length) * 100)
@@ -176,6 +180,7 @@ export default async function SpecDetailPage({ params }: PageProps) {
           currentPhase={spec.currentPhase || spec.phase || 'REQUIREMENTS'}
           hasRequirements={spec.requirements && Object.keys(spec.requirements).length > 0}
           hasDesign={!!spec.design}
+          isBlocked={isBlocked}
         />
       </div>
 
@@ -200,8 +205,30 @@ export default async function SpecDetailPage({ params }: PageProps) {
         </CardContent>
       </Card>
 
+      {/* Blocked banner */}
+      {isBlocked && (
+        <div className="rounded-lg border-2 border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 p-4 flex items-start gap-3">
+          <span className="text-2xl">🔒</span>
+          <div>
+            <p className="font-semibold text-orange-800 dark:text-orange-200">This spec is locked</p>
+            <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
+              Complete these specs first:
+            </p>
+            <ul className="mt-1 space-y-0.5">
+              {blockingSpecs.map((dep: any) => (
+                <li key={dep._id}>
+                  <a href={`/specs/${dep._id}`} className="text-sm font-mono text-orange-700 dark:text-orange-300 underline">
+                    #{String(dep.specNumber).padStart(3,'0')} {dep.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* Content sections - collapsible with persisted state */}
-      <SpecSections spec={spec} tasks={tasks} />
+      <SpecSections spec={spec} tasks={tasks} isBlocked={isBlocked} />
 
       {/* Metadata */}
       <Card>

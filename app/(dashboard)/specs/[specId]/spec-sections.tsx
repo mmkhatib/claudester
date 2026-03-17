@@ -15,6 +15,7 @@ import 'github-markdown-css/github-markdown.css';
 interface SpecSectionsProps {
   spec: any;
   tasks: any[];
+  isBlocked?: boolean;
 }
 
 function generateRequirementsSummary(requirements: any): string {
@@ -66,7 +67,7 @@ function generateTasksSummary(tasks: any[]): string {
   return `${tasks.length} total ${tasks.length === 1 ? 'task' : 'tasks'}: ${parts.join(', ')}`;
 }
 
-export function SpecSections({ spec, tasks }: SpecSectionsProps) {
+export function SpecSections({ spec, tasks, isBlocked = false }: SpecSectionsProps) {
   const { isGeneratingRequirements, isGeneratingDesign, isGeneratingTasks } = useSpecLoading();
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewContent, setViewContent] = useState('');
@@ -298,7 +299,7 @@ export function SpecSections({ spec, tasks }: SpecSectionsProps) {
             <span className="text-sm text-zinc-600 dark:text-zinc-400">Generating tasks...</span>
           </div>
         ) : tasks.length > 0 ? (
-          <TaskList tasks={tasks} specId={spec._id} />
+          <TaskList tasks={tasks} specId={spec._id} isBlocked={isBlocked} />
         ) : (
           <div className="text-center py-8">
             <CheckSquare className="h-8 w-8 text-zinc-400 mx-auto mb-3" />

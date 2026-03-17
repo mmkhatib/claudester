@@ -67,6 +67,16 @@ export class TaskExecutionService {
       throw new Error(`Task ${taskId} not found`);
     }
 
+    // Check spec-level dependency enforcement
+    const spec = await Spec.findById(task.specId).populate('dependsOn', 'specNumber title status');
+    if (spec?.dependsOn?.length) {
+      const blocking = spec.dependsOn.filter((dep: any) => dep.status !== 'COMPLETE');
+      if (blocking.length > 0) {
+        const names = blocking.map((d: any) => `#${String(d.specNumber).padStart(3,'0')} ${d.title}`).join(', ');
+        throw new Error(`Blocked by incomplete specs: ${names}`);
+      }
+    }
+
     // 2. Check if dependencies are met
     const dependenciesMet = await this.checkDependencies(task);
     if (!dependenciesMet) {
@@ -347,6 +357,19 @@ Please implement this task now using the file operation tools (list_directory, r
       agent.status = AgentStatus.COMPLETED;
       agent.output = result;
       await agent.save();
+
+      // Auto-complete spec if all its tasks are now done
+      const spec = await Spec.findById(task.specId);
+      if (spec) {
+        const allTasks = await Task.find({ specId: spec._id });
+        const allDone = allTasks.length > 0 && allTasks.every((t: any) => t.status === TaskStatus.COMPLETED);
+        if (allDone && spec.status !== 'COMPLETE') {
+          spec.status = 'COMPLETE';
+          spec.completedAt = new Date();
+          await spec.save();
+          console.log(`[TaskExecution] Spec ${spec._id} auto-completed`);
+        }
+      }
 
       return {
         success: true,

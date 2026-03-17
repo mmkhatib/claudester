@@ -22,9 +22,10 @@ interface Task {
 interface TaskListProps {
   tasks: Task[];
   specId: string;
+  isBlocked?: boolean;
 }
 
-export function TaskList({ tasks, specId }: TaskListProps) {
+export function TaskList({ tasks, specId, isBlocked = false }: TaskListProps) {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [isStarting, setIsStarting] = useState(false);
   const [startingTaskId, setStartingTaskId] = useState<string | null>(null);
@@ -264,6 +265,12 @@ export function TaskList({ tasks, specId }: TaskListProps) {
 
   return (
     <div className="space-y-4">
+      {/* Blocked banner */}
+      {isBlocked && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-300 dark:border-orange-700 text-sm text-orange-800 dark:text-orange-200">
+          🔒 Tasks are locked — complete all dependency specs before starting work.
+        </div>
+      )}
       {/* Action buttons */}
       <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <div className="flex items-center gap-3">
@@ -284,7 +291,8 @@ export function TaskList({ tasks, specId }: TaskListProps) {
             variant="outline"
             size="sm"
             onClick={handleStartSelected}
-            disabled={selectedTasks.size === 0 || isStarting}
+            disabled={selectedTasks.size === 0 || isStarting || isBlocked}
+            title={isBlocked ? 'Complete dependency specs first' : undefined}
           >
             {isStarting ? (
               <>
@@ -302,7 +310,8 @@ export function TaskList({ tasks, specId }: TaskListProps) {
             variant="default"
             size="sm"
             onClick={handleStartAll}
-            disabled={tasks.length === 0 || isStarting}
+            disabled={tasks.length === 0 || isStarting || isBlocked}
+            title={isBlocked ? 'Complete dependency specs first' : undefined}
           >
             {isStarting ? (
               <>
@@ -373,7 +382,8 @@ export function TaskList({ tasks, specId }: TaskListProps) {
                       e.stopPropagation();
                       handleStartTask(task._id);
                     }}
-                    disabled={startingTaskId === task._id || task.status === 'COMPLETED'}
+                    disabled={startingTaskId === task._id || task.status === 'COMPLETED' || isBlocked}
+                    title={isBlocked ? 'Complete dependency specs first' : undefined}
                   >
                     {startingTaskId === task._id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

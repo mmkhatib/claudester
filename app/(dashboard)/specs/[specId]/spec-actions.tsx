@@ -25,9 +25,10 @@ interface SpecActionsProps {
   currentPhase: string;
   hasRequirements: boolean;
   hasDesign: boolean;
+  isBlocked?: boolean;
 }
 
-export function SpecActions({ specId, specName, currentPhase, hasRequirements, hasDesign }: SpecActionsProps) {
+export function SpecActions({ specId, specName, currentPhase, hasRequirements, hasDesign, isBlocked = false }: SpecActionsProps) {
   const router = useRouter();
   const { setGeneratingRequirements, setGeneratingDesign, setGeneratingTasks } = useSpecLoading();
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -416,7 +417,8 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
       {showGenerateRequirements && (
         <Button
           onClick={() => setShowGenerateConfirm(true)}
-          disabled={isGenerating}
+          disabled={isGenerating || isBlocked}
+          title={isBlocked ? 'Spec is locked — complete dependencies first' : undefined}
         >
           <Wand2 className="h-4 w-4 mr-2" />
           {isGenerating ? 'Generating...' : 
@@ -429,7 +431,8 @@ export function SpecActions({ specId, specName, currentPhase, hasRequirements, h
       {showGenerateTasks && (
         <Button
           onClick={() => setShowTasksConfirm(true)}
-          disabled={isGeneratingTasks}
+          disabled={isGeneratingTasks || isBlocked}
+          title={isBlocked ? 'Spec is locked — complete dependencies first' : undefined}
         >
           <Play className="h-4 w-4 mr-2" />
           {isGeneratingTasks ? 'Generating Tasks...' : 'Generate Tasks'}
