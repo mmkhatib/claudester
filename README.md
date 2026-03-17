@@ -17,6 +17,7 @@ Claudester enables non-technical stakeholders (product managers, business users)
 - 🎯 **Business-Friendly UI** - Plain English interface with optional technical view
 - 🔄 **Multi-Agent Orchestration** - Parallel task execution with intelligent dependency management
 - ✅ **Phase Gate Approval** - Stakeholder review and approval at each phase
+- 🔒 **Spec Dependency Enforcement** - Specs are hard-blocked (UI + API) until all dependency specs are complete; tasks are blocked until their prerequisite tasks finish; specs auto-complete when all tasks are done
 
 ## Architecture
 
